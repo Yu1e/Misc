@@ -4,9 +4,6 @@ This entire README (including all feature descriptions, formatting, and even thi
 
 Kanban board contained entirely within a single HTML file. Designed for minimizing clicks, and keeping your workflow in one streamlined window.
 
-![Project Screenshot](https://via.placeholder.com/800x400?text=Kanban+Board+Preview)
-*(Note: Replace with a real screenshot)*
-
 ## 🚀 Key Features
 
 ### ⚡ Workflow & Efficiency
