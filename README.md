@@ -34,9 +34,7 @@ Kanban board contained entirely within a single HTML file. Designed for minimizi
 *   **Special Effects:** Trigger confetti explosions, sound effects, or custom animations when moving tasks to "Done".
 *   **Personal Rewards:** Define rewards that appear automatically upon task completion (e.g., "Take a 5-minute break", "Enjoy your favorite song").
 
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-39-18.png)
-
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-33-10.png)
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_12-16-07.png) ![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_12-15-05.png)
 
 ## 🛠️ How to Use
 
