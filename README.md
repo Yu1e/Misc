@@ -6,8 +6,6 @@ Kanban board contained entirely within a single HTML file. Designed for minimizi
 
 ![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-30-18.png)
 
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-42-26ps.png)
-
 ## 🚀 Key Features
 
 ### ⚡ Workflow & Efficiency
@@ -52,6 +50,8 @@ If you have multiple links attached to a task, you can assign them to specific s
 ![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-41-37.png)
 
 ![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-09.png)
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-42-26ps.png)
 
 ### Personal Mode
 Access the dedicated "Personal" list to manage private to-dos separately from the main board columns.
