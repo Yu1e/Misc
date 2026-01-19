@@ -4,6 +4,8 @@ This entire README (including all feature descriptions, formatting, and even thi
 
 Kanban board contained entirely within a single HTML file. Designed for minimizing clicks, and keeping your workflow in one streamlined window.
 
+![https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-30-18.png]
+
 ## 🚀 Key Features
 
 ### ⚡ Workflow & Efficiency
