@@ -1,0 +1,38 @@
+{
+  "columns": [
+    {
+      "id": "napadalo",
+      "title": "🍂 Нападало",
+      "order": 0
+    },
+    {
+      "id": "inprogress",
+      "title": "🔨 В работе",
+      "order": 1
+    },
+    {
+      "id": "done",
+      "title": "🎆 Сделано",
+      "order": 2
+    },
+    {
+      "id": "stuck",
+      "title": "➰ Подвисло",
+      "order": 3
+    },
+    {
+      "id": "someday",
+      "title": "🔮 Когда-нибудь",
+      "order": 4
+    }
+  ],
+  "tasks": [],
+  "archive": [],
+  "tasksOrder": {
+    "napadalo": [],
+    "inprogress": [],
+    "done": [],
+    "stuck": [],
+    "someday": []
+  }
+}
