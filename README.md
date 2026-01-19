@@ -47,17 +47,17 @@ If you have multiple links attached to a task, you can assign them to specific s
 *   Type `_1` in a subtask to make it clickable using the **1st** attached link.
 *   Type `_2` for the **2nd** link, and so on.
 
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-41-37.png)
-
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-09.png)
-
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-42-26ps.png)
-
 ### Personal Mode
 Access the dedicated "Personal" list to manage private to-dos separately from the main board columns.
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-41-37.png)
 
 ## 🤝 Contributing
 Since the entire logic is in one file, customization is straightforward. Feel free to fork and submit Pull Requests!
 
 ## 📄 License
 Distributed under the MIT License.
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-09.png)
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-42-26ps.png)
