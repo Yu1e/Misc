@@ -55,8 +55,6 @@ If you have multiple links attached to a task, you can assign them to specific s
 
 ![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-09.png)
 
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-53.png)
-
 ### Personal Mode
 Access the dedicated "Personal" list to manage private to-dos separately from the main board columns.
 
