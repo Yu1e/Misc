@@ -4,7 +4,9 @@ This entire README (including all feature descriptions, formatting, and even thi
 
 Kanban board contained entirely within a single HTML file. Designed for minimizing clicks, and keeping your workflow in one streamlined window.
 
-![https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-30-18.png]
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-30-18.png)
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-42-26ps.png)
 
 ## 🚀 Key Features
 
@@ -32,7 +34,13 @@ Kanban board contained entirely within a single HTML file. Designed for minimizi
 *   **Special Effects:** Trigger confetti explosions, sound effects, or custom animations when moving tasks to "Done".
 *   **Personal Rewards:** Define rewards that appear automatically upon task completion (e.g., "Take a 5-minute break", "Enjoy your favorite song").
 
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-39-18.png)
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-33-10.png)
+
 ## 🛠️ How to Use
+
+Download kanban.html and open it in your favorite browser.
 
 ### Basic Operations
 1.  **Add/Edit:** Click to add items. Click text to inline-edit.
@@ -42,6 +50,12 @@ Kanban board contained entirely within a single HTML file. Designed for minimizi
 If you have multiple links attached to a task, you can assign them to specific subtasks using underscores:
 *   Type `_1` in a subtask to make it clickable using the **1st** attached link.
 *   Type `_2` for the **2nd** link, and so on.
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-41-37.png)
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-09.png)
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-53.png)
 
 ### Personal Mode
 Access the dedicated "Personal" list to manage private to-dos separately from the main board columns.
