@@ -1,0 +1,4782 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Канбан</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <script>
+    /* ============================================
+       БЛОК ДЖАВА-1: КОНФИГУРАЦИЯ (НАЗВАНИЯ)
+       Здесь можно менять название канбана и колонок
+       ============================================ */
+    const APPCONFIG = {
+        title: '🌀 Доска «Неделька»',
+        columns: [
+            { id: 'napadalo', title: '🍂 Нападало', order: 0 },
+            { id: 'inprogress', title: '🪚 В работе', order: 1 },
+            { id: 'done', title: '✨ Сделано', order: 2 },
+            { id: 'stuck', title: '➰ Подвисло', order: 3 },
+            { id: 'someday', title: '🔮 Когда-нибудь', order: 4 }
+        ],
+        archiveAutoDeleteDays: 31
+    };
+
+    let TEMPLATES = [];
+    </script>
+    
+    <style>
+/* ============================================
+   БЛОК СТИЛИ-1: БАЗОВЫЕ СТИЛИ И СКРОЛЛБАР
+   ============================================ */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.3) rgba(17, 24, 39, 0.5);
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(17, 24, 39, 0.5);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+}
+
+/* ============================================
+   БЛОК СТИЛИ-2: BODY И ОСНОВНОЙ ФОН
+   ============================================ */
+body {
+    margin: 0;
+    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+    background: 
+        radial-gradient(circle at 0% 0%, rgba(147, 51, 234, 0.35), transparent 55%),
+        radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.35), transparent 55%),
+        radial-gradient(circle at 0% 100%, rgba(236, 72, 153, 0.32), transparent 55%),
+        linear-gradient(135deg, #17132f 0%, #1c1638 12%, #241d4a 26%, #2c235a 40%, #362d6d 55%, #3e3580 70%, #463d90 85%, #4e459b 100%);
+    background-attachment: fixed;
+    color: #d1d5db;
+    min-height: 100vh;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-3: ШАПКА (HEADER)
+   ============================================ */
+button#importBtn:hover {
+    background: rgba(16, 185, 129, 0.25) !important;
+    border-color: rgba(16, 185, 129, 0.7) !important;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.5) !important;
+}
+
+button#exportBtn:hover {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(59, 130, 246, 0.2)) !important;
+    border-color: rgba(56, 189, 248, 0.7) !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.45) !important;
+}
+
+button#archiveToggle {
+    background: rgba(17, 24, 39, 0.75);
+    border: 1px solid rgba(217, 119, 6, 0.3);
+    color: #d1d5db;
+}
+
+button#archiveToggle:hover {
+    background: rgba(217, 119, 6, 0.2) !important;
+    border-color: rgba(245, 158, 11, 0.6) !important;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.4) !important;
+    color: #fbbf24 !important;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 30px;
+    background: rgba(15, 12, 25, 0.78);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(129, 140, 248, 0.35);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 27px;
+    color: #e0e7ff;
+    font-weight: 500;
+}
+
+header .buttons {
+    display: flex;
+    gap: 12px;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-4: КНОПКИ (ОБЩИЕ СТИЛИ)
+   ============================================ */
+button {
+    border-radius: 6px;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    padding: 8px 14px;
+    font-size: 15px;
+    cursor: pointer;
+    background: rgba(17, 24, 39, 0.75);
+    color: #d1d5db;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    font-weight: 400;
+}
+
+button:hover {
+    background: rgba(30, 64, 175, 0.7);
+    border-color: rgba(129, 140, 248, 0.7);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(129, 140, 248, 0.35);
+}
+
+button.secondary {
+    background: rgba(17, 24, 39, 0.65);
+    border-color: rgba(99, 102, 241, 0.25);
+}
+
+button.secondary:hover {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: rgba(129, 140, 248, 0.5);
+}
+
+button.danger {
+    background: rgba(127, 29, 29, 0.5);
+    border-color: rgba(248, 113, 113, 0.5);
+}
+
+button.danger:hover {
+    background: rgba(127, 29, 29, 0.7);
+    border-color: rgba(248, 113, 113, 0.7);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Кнопка отмены удаления */
+.undo-btn {
+    background: rgba(127, 29, 29, 0.3);
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.undo-btn:hover:not(:disabled) {
+    background: rgba(127, 29, 29, 0.5);
+    border-color: rgba(248, 113, 113, 0.5);
+}
+
+.undo-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-5: MAIN И ДОСКА
+   ============================================ */
+main {
+    padding: 18px 24px 30px;
+    overflow-x: auto;
+    min-height: calc(100vh - 100px);
+}
+
+.board {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    min-width: max-content;
+    min-height: calc(100vh - 140px);
+}
+
+/* ============================================
+   БЛОК СТИЛИ-6: КОЛОНКИ
+   ============================================ */
+.column {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(129, 140, 248, 0.4);
+    border-radius: 12px;
+    padding: 12px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 160px);
+    cursor: pointer;
+}
+
+.column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 9px;
+    pointer-events: none;
+}
+
+.column-title {
+    font-size: 20px;
+    font-weight: 500;
+    color: #c7d2fe;
+}
+
+.column-count {
+    font-size: 17px;
+    color: #6b7280;
+    font-weight: 300;
+}
+
+.column-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    pointer-events: auto;
+}
+
+.add-task-btn {
+    margin-top: 9px;
+    font-size: 14px;
+    padding: 6px 10px;
+    pointer-events: auto;
+    background: rgba(30, 64, 175, 0.6);
+    border-color: rgba(129, 140, 248, 0.6);
+    color: #e0e7ff;
+}
+
+.add-task-btn:hover {
+    background: rgba(37, 99, 235, 0.8);
+}
+
+/* Колонка внутри обёртки с done-box — короче */
+.done-wrapper .column {
+    min-height: calc(100vh - 169px - 169px);
+}
+
+/* ============================================
+   БЛОК СТИЛИ-7: БЛОК "СДЕЛАНО" (ПРАЗДНИЧНЫЙ)
+   ============================================ */
+.done-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.done-box {
+    background: 
+        radial-gradient(circle at 30% 30%, rgba(16, 185, 129, 0.25), transparent 60%),
+        rgba(17, 24, 39, 0.75);
+    backdrop-filter: blur(14px);
+    border: 2px solid rgba(16, 185, 129, 0.5);
+    border-radius: 12px;
+    padding: 12px;
+    width: 320px;
+    height: 70px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 
+        0 0 20px rgba(16, 185, 129, 0.2),
+        inset 0 0 30px rgba(16, 185, 129, 0.05);
+}
+
+.done-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 40%,
+        rgba(16, 185, 129, 0.03) 45%,
+        rgba(16, 185, 129, 0.05) 50%,
+        rgba(16, 185, 129, 0.03) 55%,
+        transparent 60%
+    );
+    animation: done-shimmer 3s infinite linear;
+    pointer-events: none;
+}
+
+@keyframes done-shimmer {
+    0% { transform: translateX(-30%) translateY(-30%) rotate(45deg); }
+    100% { transform: translateX(30%) translateY(30%) rotate(45deg); }
+}
+
+.done-box .column-header {
+    pointer-events: none;
+}
+
+.done-box .column-title {
+    color: #6ee7b7;
+}
+
+.done-box .column-body {
+    flex: 1;
+    overflow: hidden;
+    pointer-events: auto;
+}
+
+.done-box .card.collapsed {
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    max-height: 280px;
+    overflow: hidden;
+}
+
+/* Блок статистики (подвал под "В работе") */
+.stats-box {
+    background: 
+        radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.25), transparent 60%),
+        rgba(17, 24, 39, 0.75);
+    backdrop-filter: blur(14px);
+    border: 2px solid rgba(99, 102, 241, 0.5);
+    border-radius: 12px;
+    padding: 12px;
+    width: 320px;
+    height: 100px;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 
+        0 0 20px rgba(99, 102, 241, 0.2),
+        inset 0 0 30px rgba(99, 102, 241, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+}
+
+.stats-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 0 30px rgba(99, 102, 241, 0.4),
+        inset 0 0 40px rgba(99, 102, 241, 0.1);
+}
+
+.stats-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 40%,
+        rgba(99, 102, 241, 0.03) 45%,
+        rgba(99, 102, 241, 0.05) 50%,
+        rgba(99, 102, 241, 0.03) 55%,
+        transparent 60%
+    );
+    animation: done-shimmer 3s infinite linear;
+    pointer-events: none;
+}
+
+.stats-title {
+    font-size: 14px;
+    color: #a5b4fc;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.stats-line {
+    font-size: 13px;
+    color: #d1d5db;
+    font-weight: 300;
+}
+
+.inprogress-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+
+/* ============================================
+   БЛОК СТИЛИ-8: КАРТОЧКИ ЗАДАЧ
+   ============================================ */
+.card {
+    background: rgba(30, 27, 75, 0.75);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    border: 1px solid rgba(129, 140, 248, 0.4);
+    padding: 7px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: grab;
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    pointer-events: auto;
+}
+
+/* Свёрнутое состояние карточки */
+.card.collapsed {
+    max-height: 280px;
+    overflow: hidden;
+}
+
+.card.collapsed .title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-wrap: break-word;
+}
+
+.card.collapsed .description {
+    display: none;
+}
+
+.card.collapsed .subtask-row:nth-child(n+5) {
+    display: none;
+}
+
+.card.collapsed .subtasks {
+    max-height: none;
+    overflow: visible;
+}
+
+.card.collapsed .link-row:nth-child(n+2) {
+    display: none;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(167, 139, 250, 0.8);
+    box-shadow: 0 8px 24px rgba(129, 140, 248, 0.3);
+}
+
+
+/* Зона для перетаскивания в правом нижнем углу */
+
+ Отступ для контента от drag-handle */
+.card {
+    
+}
+
+.card.dragging {
+    opacity: 0.6;
+    border-style: dashed;
+    box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.7);
+}
+
+.card-placeholder {
+    border-radius: 10px;
+    border: 1px dashed rgba(129, 140, 248, 0.7);
+    background: rgba(30, 64, 175, 0.25);
+    height: 60px;
+    margin-bottom: 6px;
+}
+
+.done-box .card-placeholder {
+    border-color: rgba(16, 185, 129, 0.7);
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.card.archiving {
+    animation: card-archive 0.9s ease-out forwards;
+}
+
+@keyframes card-archive {
+    0% { transform: scale(1); opacity: 1; }
+    40% { transform: scale(1.04); opacity: 1; }
+    100% { transform: scale(0.8) translateY(-18px); opacity: 0; }
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.title {
+    font-size: 17px;
+    font-weight: 500;
+    padding: 3px 4px;
+    margin-right: 36px;
+    border-radius: 5px;
+    min-height: 24px;
+    color: #e5e7eb;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.title[contenteditable="true"]:empty::before,
+.description[contenteditable="true"]:empty::before,
+.tags[contenteditable="true"]:empty::before,
+.subtask-text[contenteditable="true"]:empty::before {
+    content: attr(data-placeholder);
+    color: #4b5563;
+    
+    pointer-events: none;
+}
+
+.title[contenteditable="true"]:focus,
+.description[contenteditable="true"]:focus,
+.tags[contenteditable="true"]:focus,
+.subtask-text[contenteditable="true"]:focus {
+    outline: 2px solid rgba(129, 140, 248, 0.65);
+    background: rgba(30, 64, 175, 0.3);
+}
+
+.description {
+    font-size: 15px;
+    color: #9ca3af;
+    padding: 3px 4px;
+    border-radius: 5px;
+    min-height: 22px;
+    font-weight: 300;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+/* Колонка внутри обёртки со stats-box — короче */
+.inprogress-wrapper .column {
+    min-height: calc(100vh - 180px - 120px);
+}
+
+
+/* ============================================
+   БЛОК СТИЛИ-9: МЕТА-СТРОКА (ПРИОРИТЕТ, ДАТА, ТЕГИ)
+   ============================================ */
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+}
+
+.priority-toggle {
+    display: inline-flex;
+    gap: 3px;
+    background: rgba(15, 23, 42, 0.85);
+    padding: 2px;
+    border-radius: 5px;
+    border: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.priority-btn {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    position: relative;
+    opacity: 0.25;
+}
+
+.priority-btn:hover {
+    transform: scale(1.1);
+    opacity: 0.55;
+}
+
+.priority-btn.active {
+    opacity: 1;
+    border-color: rgba(229, 231, 235, 0.4);
+    box-shadow: 0 0 10px rgba(15, 23, 42, 0.6);
+}
+
+.priority-btn.low {
+    background: linear-gradient(135deg, #064e3b, #047857);
+}
+
+.priority-btn.low.active {
+    background: linear-gradient(135deg, #047857, #059669);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.priority-btn.medium {
+    background: linear-gradient(135deg, #78350f, #b45309);
+}
+
+.priority-btn.medium.active {
+    background: linear-gradient(135deg, #b45309, #ea580c);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.priority-btn.high {
+    background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+}
+
+.priority-btn.high.active {
+    background: linear-gradient(135deg, #b91c1c, #ef4444);
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.4);
+}
+
+.date-input {
+    font-size: 13px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(55, 65, 81, 0.9);
+    border-radius: 6px;
+    padding: 2px 8px;
+    color: #9ca3af;
+    font-family: inherit;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: rgba(129, 140, 248, 0.8);
+    background: rgba(17, 24, 39, 0.9);
+}
+
+.tags {
+    display: none;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-10: ПОДЗАДАЧИ
+   ============================================ */
+.subtasks {
+    margin-top: 3px;
+    padding-top: 3px;
+    border-top: 1px solid rgba(148, 163, 184, 0.3);
+    transition: max-height 0.25s ease;
+}
+
+.subtask-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    color: #e5e7eb;
+    margin-bottom: 2px;
+}
+
+/* Перемещение подзадач */
+.subtask-row {
+    cursor: move;
+    position: relative;
+}
+
+.subtask-row.dragging {
+    opacity: 0.5;
+}
+
+.subtask-placeholder {
+    height: 24px;
+    border: 1px dashed rgba(129, 140, 248, 0.5);
+    background: rgba(30, 64, 175, 0.15);
+    margin-bottom: 3px;
+    border-radius: 3px;
+}
+
+.subtask-row input[type="checkbox"] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #6366f1;
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    box-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+}
+
+.subtask-row input[type="checkbox"]:hover {
+    border-color: #a5b4fc;
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.8);
+}
+
+.subtask-row input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border-color: #a5b4fc;
+    box-shadow: 0 0 16px rgba(129, 140, 248, 0.9);
+}
+
+.subtask-row input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.subtask-text {
+    word-wrap: break-word;
+    flex: 1;
+    padding: 2px 4px;
+    border-radius: 5px;
+}
+
+.subtask-row.completed .subtask-text {
+    text-decoration: line-through;
+    color: #6b7280;
+}
+
+
+.subtask-delete:hover {
+    background: rgba(127, 29, 29, 0.5);
+    color: #fecaca;
+}
+
+.progress-bar-container {
+    margin-top: 6px;
+    margin-bottom: 4px;
+    background: rgba(15, 23, 42, 0.9);
+    border-radius: 999px;
+    height: 7px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #6366f1, #a5b4fc);
+    transition: width 0.45s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.6);
+}
+
+.progress-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2.4s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.subtasks-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 3px;
+}
+
+.progress {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.mini-btn {
+    border: none;
+    background: transparent;
+    color: #a5b4fc;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 4px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    font-family: inherit;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.mini-btn:hover {
+    color: #e5e7eb;
+    text-shadow: 0 0 8px rgba(129, 140, 248, 0.7);
+}
+
+.add-subtask-btn {
+    font-size: 16px;
+    padding: 6px 10px;
+    border: none;
+    background: rgba(139, 92, 246, 0.3);
+    color: #c7d2fe;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    min-width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.add-subtask-btn:hover {
+    background: rgba(139, 92, 246, 0.5);
+    transform: scale(1.05);
+}
+
+.footer-buttons {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Блок ссылок */
+.links-container {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+
+.link-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 0;
+    padding: 0 4px;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.link-row:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.link-number {
+    font-size: 12px;
+    line-height: 1.1;
+    color: #a5b4fc;
+    font-weight: 500;
+    min-width: 16px;
+}
+
+.link-url {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.1;
+    color: #60a5fa;
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 3px;
+    text-decoration: underline;
+    word-break: break-all;
+    user-select: none;
+}
+
+.link-url[contenteditable="true"] {
+    cursor: text;
+    user-select: text;
+    text-decoration: none;
+    background: rgba(17, 24, 39, 0.5);
+    outline: 1px solid rgba(129, 140, 248, 0.5);
+}
+
+.link-url:hover {
+    background: rgba(96, 165, 250, 0.1);
+}
+
+
+
+.link-url[contenteditable="true"]:empty::before {
+    content: attr(data-placeholder);
+    color: #6b7280;
+    
+}
+
+.link-url:empty:not([contenteditable="true"]) {
+    color: #6b7280;
+    
+}
+
+.link-url:empty:not([contenteditable="true"])::after {
+    content: '(пусто)';
+}
+
+
+/* ============================================
+   БЛОК СТИЛИ-11: КНОПКА "В РАБОТУ"
+   ============================================ */
+.move-to-work-btn {
+    font-size: 13px;
+    border-radius: 6px;
+    padding: 3px 8px;
+    background: radial-gradient(circle at 0% 0%, rgba(129, 140, 248, 0.4), transparent 50%), linear-gradient(135deg, #1e293b, #1d4ed8);
+    color: #e5e7eb;
+    border: 1px solid rgba(55, 65, 81, 0.9);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    font-family: inherit;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.8);
+}
+
+.move-to-work-btn:hover {
+    background: radial-gradient(circle at 0% 0%, rgba(129, 140, 248, 0.4), transparent 50%), linear-gradient(135deg, #111827, #1e40af);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.9);
+}
+
+/* ============================================
+   БЛОК СТИЛИ-12: ФУТЕР КАРТОЧКИ
+   ============================================ */
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 3px;
+}
+
+.card-footer::after {
+    content: '⠿⠿⠿⠿⠿⠿⠿⠿⠿⠿⠿⠿⠿⠿⠿';
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    color: rgba(129, 140, 248, 0.3);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    cursor: grab;
+    user-select: none;
+}
+
+.card:hover .card-footer::after {
+    color: rgba(129, 140, 248, 0.5);
+}
+
+.card.dragging .card-footer::after {
+    cursor: grabbing;
+}
+
+/* Кнопка удаления в верхнем правом углу */
+.card-delete-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(127, 29, 29, 0.5);
+    color: #fecaca;
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    padding: 0;
+    line-height: 1;
+    opacity: 0.9;
+    z-index: 2;
+}
+
+.card-collapse-btn {
+    position: absolute;
+    top: 40px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(99, 102, 241, 0.3);
+    color: #c7d2fe;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    padding: 0;
+    line-height: 1;
+    opacity: 0.9;
+    z-index: 2;
+}
+
+.card-collapse-btn:hover {
+    background: rgba(99, 102, 241, 0.5);
+    opacity: 1;
+}
+
+.card-delete-btn:hover {
+    background: rgba(127, 29, 29, 0.8);
+    color: #fff;
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+
+.archive-badge {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.age-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-weight: 400;
+}
+
+.age-fresh {
+    background: rgba(5, 150, 105, 0.2);
+    color: #6ee7b7;
+    border: 1px solid rgba(5, 150, 105, 0.4);
+}
+
+.age-normal {
+    background: rgba(217, 119, 6, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(217, 119, 6, 0.4);
+}
+
+.age-old {
+    background: rgba(220, 38, 38, 0.2);
+    color: #fecaca;
+    border: 1px solid rgba(220, 38, 38, 0.4);
+}
+
+.delete-task-btn {
+    font-size: 15px;
+    padding: 4px 8px;
+    background: rgba(30, 27, 75, 0.9);
+    border: 1px solid rgba(75, 85, 99, 0.9);
+    color: #9ca3af;
+}
+
+.delete-task-btn:hover {
+    background: rgba(24, 24, 27, 0.95);
+    border-color: rgba(148, 163, 184, 0.9);
+    color: #e5e7eb;
+}
+
+.archive-delete-btn {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.5s ease-out, opacity 0.3s ease;
+    line-height: 1;
+}
+
+.archive-delete-btn:hover {
+    background: rgba(127, 29, 29, 0.6);
+    color: #fecaca;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-13: ОВЕРЛЕЙ АРХИВА
+   ============================================ */
+.archive-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 12, 25, 0.9);
+    backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+}
+
+.archive-overlay.open {
+    display: flex;
+}
+
+.archive-panel {
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(18px);
+    border-radius: 18px;
+    border: 1px solid rgba(129, 140, 248, 0.5);
+    width: min(1200px, 96vw);
+    max-height: min(80vh, 800px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
+}
+
+.archive-header {
+    padding: 15px 21px;
+    border-bottom: 1px solid rgba(75, 85, 99, 0.9);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.archive-body {
+    padding: 15px 21px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-14: ДИАЛОГ "ВСЕ ПОДЗАДАЧИ ВЫПОЛНЕНЫ"
+   ============================================ */
+.all-done-modal {
+    position: absolute;
+    background: rgba(17, 24, 39, 0.98);
+    backdrop-filter: blur(18px);
+    border-radius: 15px;
+    border: 1px solid rgba(129, 140, 248, 0.5);
+    padding: 21px 24px 18px;
+    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.95);
+    z-index: 41;
+    max-width: 320px;
+    width: 90%;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-14.5: ОВЕРЛЕЙ "ЛИЧНОЕ" (МЯТНЫЙ)
+   ============================================ */
+.personal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 25, 20, 0.75);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 25;
+    padding-top: 80px;
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { background: rgba(15, 25, 20, 0); backdrop-filter: blur(0px); }
+    to { background: rgba(15, 25, 20, 0.75); backdrop-filter: blur(8px); }
+}
+
+.personal-overlay.open {
+    display: flex;
+}
+
+.personal-column {
+    background: 
+        radial-gradient(circle at 30% 20%, rgba(16, 185, 129, 0.2), transparent 50%),
+        radial-gradient(circle at 70% 80%, rgba(52, 211, 153, 0.15), transparent 50%),
+        rgba(17, 30, 25, 0.92);
+    backdrop-filter: blur(14px);
+    border: 2px solid rgba(16, 185, 129, 0.5);
+    border-radius: 16px;
+    padding: 16px;
+    width: 380px;
+    min-height: 60vh;
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 
+        0 0 40px rgba(16, 185, 129, 0.25),
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        inset 0 0 60px rgba(16, 185, 129, 0.05);
+    position: relative;
+    cursor: pointer;
+}
+
+@keyframes rollDown {
+    0% {
+        transform: scaleY(0.05) translateY(-50%);
+        opacity: 0;
+        border-radius: 200px 200px 16px 16px;
+    }
+    50% {
+        transform: scaleY(0.5) translateY(-25%);
+        opacity: 0.7;
+        border-radius: 100px 100px 16px 16px;
+    }
+    100% {
+        transform: scaleY(1) translateY(0);
+        opacity: 1;
+        border-radius: 16px;
+    }
+}
+
+.personal-overlay.closing .personal-column {
+    animation: rollUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes rollUp {
+    0% {
+        transform: scaleY(1) translateY(0);
+        opacity: 1;
+        border-radius: 16px;
+    }
+    100% {
+        transform: scaleY(0.05) translateY(-50%);
+        opacity: 0;
+        border-radius: 200px 200px 16px 16px;
+    }
+}
+
+.personal-column .column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.personal-column .column-title {
+    font-size: 22px;
+    font-weight: 500;
+    color: #6ee7b7;
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
+
+.personal-column .column-count {
+    font-size: 17px;
+    color: rgba(110, 231, 183, 0.6);
+    font-weight: 300;
+}
+
+.personal-close-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(17, 30, 25, 0.9);
+    border: 2px solid rgba(16, 185, 129, 0.5);
+    color: #6ee7b7;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+.personal-close-btn:hover {
+    background: rgba(16, 185, 129, 0.3);
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
+.personal-column .column-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+}
+
+.personal-column .card {
+    background: rgba(20, 40, 35, 0.8);
+    border-color: rgba(16, 185, 129, 0.4);
+    cursor: auto;
+}
+
+.personal-column .card:hover {
+    border-color: rgba(52, 211, 153, 0.7);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+}
+
+.personal-column .add-task-btn {
+    margin-top: 12px;
+    background: rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: #a7f3d0;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+}
+
+.personal-column .add-task-btn:hover {
+    background: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.personal-column .priority-btn.low.active {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.personal-column .progress-bar-fill {
+    background: linear-gradient(90deg, #10b981, #6ee7b7);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
+.personal-column .subtask-row input[type="checkbox"] {
+    border-color: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.personal-column .subtask-row input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #6ee7b7;
+}
+
+#personalToggle {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #a7f3d0;
+}
+
+#personalToggle:hover {
+    background: rgba(16, 185, 129, 0.3);
+    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    color: #6ee7b7;
+}
+
+.all-done-modal .modal-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+    font-weight: 500;
+    color: #e5e7eb;
+}
+
+.all-done-modal .modal-text {
+    font-size: 15px;
+    color: #9ca3af;
+    margin-bottom: 18px;
+}
+
+.all-done-modal .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-19: ОТЧЁТ ЛИЧНЫХ ЗАДАЧ
+   ============================================ */
+.personal-report-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    transform-origin: center center;
+    clip-path: circle(100% at 50% 50%);
+    background: linear-gradient(135deg, 
+        rgba(16, 185, 129, 0.15), 
+        rgba(17, 30, 25, 0.98)
+    );
+    backdrop-filter: blur(20px);
+    border: 2px solid rgba(16, 185, 129, 0.6);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 
+        0 0 60px rgba(16, 185, 129, 0.3),
+        0 30px 90px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.personal-report-modal.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.report-close-x {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.2);
+    border: 2px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.report-close-x:hover {
+    background: rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.6);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.report-emoji {
+    font-size: 64px;
+    text-align: center;
+    margin-bottom: 20px;
+    animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.report-title {
+    font-size: 28px;
+    font-weight: 500;
+    color: #6ee7b7;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
+
+.report-stats {
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.stat-line:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: #a7f3d0;
+    font-size: 16px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 500;
+    color: #6ee7b7;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.report-praise {
+    font-size: 18px;
+    line-height: 1.5;
+    color: #d1fae5;
+    text-align: center;
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(16, 185, 129, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.report-remaining {
+    text-align: center;
+    color: #86efac;
+    font-size: 14px;
+    margin-bottom: 20px;
+    opacity: 0.8;
+}
+
+.report-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.report-clear-btn,
+.report-keep-btn {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.15);
+    color: #a7f3d0;
+    font-family: inherit;
+}
+
+.report-clear-btn:hover {
+    background: rgba(16, 185, 129, 0.3);
+    border-color: rgba(16, 185, 129, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(16, 185, 129, 0.3);
+}
+
+.report-keep-btn {
+    background: rgba(17, 30, 25, 0.8);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.report-keep-btn:hover {
+    background: rgba(17, 30, 25, 0.95);
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+.manual-report-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.manual-report-btn:hover {
+    background: rgba(16, 185, 129, 0.3);
+    transform: scale(1.1);
+}
+
+/* ============================================
+   БЛОК СТИЛИ-15: МОДАЛЬНОЕ ОКНО (ОБЩЕЕ)
+   ============================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 12, 25, 0.95);
+    backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 40;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+.modal {
+    background: rgba(17, 24, 39, 0.98);
+    backdrop-filter: blur(18px);
+    border-radius: 15px;
+    border: 1px solid rgba(129, 140, 248, 0.5);
+    padding: 21px 24px 18px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.95);
+}
+
+.modal-title {
+    font-size: 20px;
+    margin-bottom: 9px;
+    font-weight: 500;
+    color: #e5e7eb;
+}
+
+.modal-text {
+    font-size: 16px;
+    color: #9ca3af;
+    margin-bottom: 15px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* ============================================
+   БЛОК СТИЛИ-16: ТОСТЫ (УВЕДОМЛЕНИЯ)
+   ============================================ */
+.toast-container {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    z-index: 50;
+}
+
+.toast {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #e5e7eb;
+    padding: 9px 15px;
+    border-radius: 10px;
+    font-size: 15px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    animation: fade-slide 0.45s ease-out;
+    border: 1px solid rgba(129, 140, 248, 0.6);
+}
+
+@keyframes fade-slide {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   БЛОК СТИЛИ-17: СЛОЙ ПРАЗДНОВАНИЯ (АНИМАЦИИ)
+   ============================================ */
+.celebration-layer {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 35;
+}
+
+.sparkle, .confetti, .firework, .star, .bubble, .heart, .lightning, .ring {
+    position: absolute;
+    pointer-events: none;
+}
+
+.sparkle {
+    width: 12px;
+    height: 12px;
+    background: #a5b4fc;
+    border-radius: 50%;
+    box-shadow: 0 0 20px #a5b4fc, 0 0 40px #6366f1;
+    animation: sparkle-pop 900ms ease-out forwards;
+}
+
+@keyframes sparkle-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    40% { transform: scale(1.5); opacity: 1; }
+    100% { transform: scale(0.1); opacity: 0; }
+}
+
+.star {
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(45deg, #a5b4fc, #6366f1);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    animation: star-twinkle 1100ms ease-out forwards;
+}
+
+@keyframes star-twinkle {
+    0% { transform: scale(0.2) rotate(0deg); opacity: 0; }
+    50% { transform: scale(1.4) rotate(180deg); opacity: 1; }
+    100% { transform: scale(0.2) rotate(360deg); opacity: 0; }
+}
+
+.confetti {
+    width: 10px;
+    height: 16px;
+    border-radius: 2px;
+    animation: confetti-fall 1800ms ease-out forwards;
+}
+
+@keyframes confetti-fall {
+    0% { opacity: 0; transform: translateY(-15px) rotate(0deg); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(60px) rotate(280deg); }
+}
+
+.firework {
+    width: 8px;
+    height: 24px;
+    border-radius: 4px;
+    animation: firework-burst 1800ms ease-out forwards;
+    transform-origin: bottom center;
+}
+
+@keyframes firework-burst {
+    0% { opacity: 0; transform: translateY(0) scaleY(0.2); }
+    30% { opacity: 1; transform: translateY(-35px) scaleY(1.2); }
+    100% { opacity: 0; transform: translateY(-70px) scaleY(0.1); }
+}
+
+.bubble {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid;
+    animation: bubble-rise 2100ms ease-out forwards;
+}
+
+@keyframes bubble-rise {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    30% { opacity: 0.8; }
+    100% { opacity: 0; transform: translateY(-80px) scale(1.2); }
+}
+
+.heart {
+    width: 14px;
+    height: 14px;
+    background: #ec4899;
+    transform: rotate(-45deg);
+    animation: heart-float 1500ms ease-out forwards;
+}
+
+.heart::before,
+.heart::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    background: #ec4899;
+    border-radius: 50%;
+    position: absolute;
+}
+
+.heart::before {
+    top: -7px;
+    left: 0;
+}
+
+.heart::after {
+    left: 7px;
+    top: 0;
+}
+
+@keyframes heart-float {
+    0% { opacity: 0; transform: translateY(0) rotate(-45deg) scale(0.3); }
+    40% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-60px) rotate(-45deg) scale(0.8); }
+}
+
+.lightning {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 16px solid #fbbf24;
+    animation: lightning-strike 1000ms ease-out forwards;
+}
+
+@keyframes lightning-strike {
+    0% { opacity: 0; transform: translateY(-20px) scale(0.5); }
+    30% { opacity: 1; transform: translateY(0) scale(1.2); }
+    100% { opacity: 0; transform: translateY(40px) scale(0.3); }
+}
+
+.ring {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid;
+    animation: ring-expand 1300ms ease-out forwards;
+}
+
+@keyframes ring-expand {
+    0% { opacity: 0.8; transform: scale(0.3); }
+    100% { opacity: 0; transform: scale(2.5); }
+}
+
+/* ============================================
+   БЛОК СТИЛИ-18: АДАПТИВНОСТЬ
+   ============================================ */
+@media (max-width: 1200px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .column {
+        width: 300px;
+    }
+
+    .done-box {
+        width: 300px;
+    }
+}
+    
+/* ========================================
+   БЛОК: СТИЛИ ПАНЕЛИ ШАБЛОНОВ + КОМПАКТНЫЙ HEADER
+   ======================================== */
+
+header {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 10px 24px !important;
+    gap: 16px !important;
+    flex-wrap: nowrap !important;
+}
+
+header h1 {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 500 !important;
+    flex-shrink: 0 !important;
+    background: linear-gradient(135deg, #a78bfa, #818cf8, #6366f1) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4)) !important;
+    letter-spacing: 0.5px !important;
+}
+
+header .buttons {
+    display: flex !important;
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+}
+
+header .buttons button {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+}
+
+.templates-bar {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+}
+
+.templates-label {
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    font-size: 11px;
+    color: #9ca3af;
+    background: rgba(15, 12, 25, 0.95);
+    padding: 0 6px;
+    z-index: 1;
+    letter-spacing: 1px;
+}
+
+.templates-container {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: visible;
+    flex: 1;
+    padding: 6px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+    min-height: 32px;
+    background: rgba(17, 24, 39, 0.4);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 6px;
+    align-items: center;
+}
+
+.templates-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.templates-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.templates-container::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.3);
+    border-radius: 2px;
+}
+
+.templates-container.drag-over {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+}
+
+.template-btn {
+    min-width: 20px;
+    width: 20px;
+    height: 20px;
+    padding: 2px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 4px;
+    color: #a78bfa;
+    font-size: 12px;
+    cursor: grab;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.template-btn:active {
+    cursor: grabbing;
+}
+
+.template-btn:nth-child(8n+1) {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.template-btn:nth-child(8n+2) {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.template-btn:nth-child(8n+3) {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.template-btn:nth-child(8n+4) {
+    background: rgba(236, 72, 153, 0.15);
+    border-color: rgba(236, 72, 153, 0.4);
+}
+
+.template-btn:nth-child(8n+5) {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.template-btn:nth-child(8n+6) {
+    background: rgba(5, 150, 105, 0.15);
+    border-color: rgba(5, 150, 105, 0.4);
+}
+
+.template-btn:nth-child(8n+7) {
+    background: rgba(147, 51, 234, 0.15);
+    border-color: rgba(147, 51, 234, 0.4);
+}
+
+.template-btn:nth-child(8n+8) {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.4);
+}
+
+.template-btn:hover {
+    background: rgba(139, 92, 246, 0.3);
+    border-color: rgba(139, 92, 246, 0.6);
+    transform: scale(1.15);
+}
+
+.template-btn .delete-template {
+    display: none;
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    background: #ef4444;
+    border: 1px solid #1f2937;
+    border-radius: 50%;
+    color: white;
+    font-size: 9px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    line-height: 1;
+}
+
+.template-btn:hover .delete-template {
+    display: flex;
+}
+
+.template-btn .tooltip {
+    visibility: hidden;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(17, 24, 39, 0.98);
+    color: #e5e7eb;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.template-btn:hover .tooltip {
+    visibility: visible;
+}
+
+.templates-empty {
+    color: #6b7280;
+    font-size: 11px;
+    font-style: italic;
+}
+
+@media (max-width: 1400px) {
+    header {
+        flex-wrap: wrap !important;
+    }
+
+    /* Ссылки на номера ссылок из подзадач (_N) */
+    .link-ref {
+        color: #60a5fa;
+        cursor: pointer;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 0 2px;
+        border-radius: 3px;
+        transition: all 0.2s;
+    }
+    
+    .link-ref:hover {
+        background: rgba(96, 165, 250, 0.2);
+        text-decoration: underline;
+    }
+    
+    .link-ref.invalid {
+        color: #6b7280;
+        cursor: default;
+    }
+    
+
+    #archiveToggle:hover {
+        background: rgba(250, 204, 21, 0.15) !important;
+        border-color: rgba(250, 204, 21, 0.4) !important;
+        color: #fbbf24 !important;
+    }
+
+
+    /* Диалог "Все подзадачи выполнены" */
+    .all-done-modal {
+        position: fixed;
+        background: rgba(15, 23, 42, 0.96);
+        border-radius: 12px;
+        padding: 18px 20px;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.9);
+        z-index: 10000;
+    }
+
+    .all-done-modal .modal-title {
+        font-size: 15px;
+        font-weight: normal;
+        color: #e5e7eb;
+        margin-bottom: 14px;
+        text-align: center;
+    }
+
+    .all-done-modal .modal-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .all-done-modal .modal-buttons button {
+        padding: 6px 16px;
+        font-size: 13px;
+        white-space: nowrap;
+        border-radius: 6px;
+    }
+
+    .modal-archive-btn {
+        border-color: rgba(250, 204, 21, 0.5) !important;
+        color: #d4d4d8 !important;
+    }
+
+    .modal-archive-btn:hover {
+        background: rgba(250, 204, 21, 0.15) !important;
+        border-color: rgba(250, 204, 21, 0.6) !important;
+        color: #fbbf24 !important;
+    }
+
+    .modal-delete-btn {
+        border-color: rgba(239, 68, 68, 0.5) !important;
+        color: #d4d4d8 !important;
+    }
+
+    .modal-delete-btn:hover {
+        background: rgba(239, 68, 68, 0.15) !important;
+        border-color: rgba(239, 68, 68, 0.6) !important;
+        color: #ef4444 !important;
+    }
+
+    /* Фикс эмодзи в кнопках шаблонов */
+    .template-btn {
+        font-family: "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+    }
+
+</style>
+</head>
+<body>
+    <header>
+        <h1 id="appTitle"></h1>
+<div class="buttons">
+    <button class="secondary undo-btn" id="undoDeleteBtn" disabled>Вернуть задачу</button>
+    <button class="secondary" id="exportBtn">Экспорт</button>
+    <button class="secondary" id="importBtn">Импорт</button>
+<button id="personalToggle">Личное</button>
+</div>
+
+    
+    <div class="templates-bar" id="templatesBar">
+        <div class="templates-label">Шаблоны и дублирование</div>
+        <div class="templates-container" id="templatesContainer"></div>
+    </div></header>
+
+    <main>
+        <div class="board" id="board"></div>
+    </main>
+
+    <div class="archive-overlay" id="archiveOverlay">
+        <div class="archive-panel">
+            <div class="archive-header">
+                <div style="font-size:20px;font-weight:500">Архив</div>
+                <div style="font-size:15px;color:#9ca3af" id="archiveCount">0</div>
+            </div>
+            <div class="archive-body" id="archiveList"></div>
+            <div style="padding:15px 21px;border-top:1px solid rgba(75,85,99,0.9);display:flex;justify-content:flex-end;gap:12px">
+                <button class="secondary" id="closeArchiveBtn">Закрыть</button>
+                <button class="secondary danger" id="clearArchiveBtn">Очистить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-text" id="modalText"></div>
+            <div class="modal-buttons">
+                <button class="secondary" id="modalNoButton">Нет</button>
+                <button id="modalYesButton">Да</button>
+            </div>
+        </div>
+    </div>
+
+<div class="personal-overlay" id="personalOverlay">
+    <div class="personal-column" id="personalColumn">
+        <button class="personal-close-btn" id="closePersonalBtn">×</button>
+        <div class="column-header">
+            <div class="column-title">🏠 Личное</div>
+            <div class="column-count" id="personalCount">0</div>
+        </div>
+        <div class="column-body" id="personalBody"></div>
+        <button class="add-task-btn" id="addPersonalTaskBtn">+ Задача</button>
+    </div>
+</div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="celebration-layer" id="celebrationLayer"></div>
+
+    <input type="file" id="fileInput" accept="application/json" style="display:none">
+
+    <script>
+
+/* ============================================
+   БЛОК ДЖАВА-2: КОНСТАНТЫ И ИНИЦИАЛИЗАЦИЯ
+   ============================================ */
+const STORAGE_KEY = 'kanbansingularitystylev10';
+const LAST_EXPORT_KEY = 'kanbansingularitylastexport';
+
+document.getElementById('appTitle').textContent = APPCONFIG.title;
+document.title = "Доска для оорсинга «Неделька»";
+
+const initialData = {
+    columns: APPCONFIG.columns.map(c => ({ ...c })),
+    tasks: [],
+    archive: [],
+    personalTasks: []
+};
+
+function loadState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return structuredClone(initialData);
+        
+        const parsed = JSON.parse(raw);
+        if (!parsed.columns || !parsed.tasks || !parsed.archive) throw new Error('bad');
+        
+        parsed.columns = APPCONFIG.columns.map(c => ({ ...c }));
+        if (!parsed.tasksOrder) parsed.tasksOrder = {};
+
+		if (!parsed.personalTasks) parsed.personalTasks = [];
+        
+        return parsed;
+    } catch (e) {
+        return structuredClone(initialData);
+    }
+}
+
+let state = loadState();
+
+// Миграция: исправляем эмодзи в старых подзадачах
+state.tasks.forEach(task => {
+    if (task.subtasks) {
+        task.subtasks.forEach(sub => {
+            if (sub.isLocked && sub.text.includes('🕊️')) {
+                sub.text = '✉️💫 Письмо о сделанном';
+            }
+        });
+    }
+});
+state.archive.forEach(task => {
+    if (task.subtasks) {
+        task.subtasks.forEach(sub => {
+            if (sub.isLocked && sub.text.includes('🕊️')) {
+                sub.text = '✉️💫 Письмо о сделанном';
+            }
+        });
+    }
+});
+
+// Автоудаление старых задач из архива
+function cleanOldArchive() {
+    const now = Date.now();
+    const maxAge = APPCONFIG.archiveAutoDeleteDays * 24 * 60 * 60 * 1000;
+    const before = state.archive.length;
+    state.archive = state.archive.filter(t => (now - (t.archivedAt || 0)) < maxAge);
+    if (state.archive.length < before) {
+        saveState();
+    }
+}
+cleanOldArchive();
+
+// Статистика за сутки
+let todayStats = {
+    date: new Date().toDateString(),
+    tasksCompleted: 0,
+    subtasksCompleted: 0
+};
+
+// Проверка обнуления статистики в полночь
+function checkStatsReset() {
+    const now = new Date();
+    const currentDate = now.toDateString();
+    if (todayStats.date !== currentDate) {
+        todayStats = {
+            date: currentDate,
+            tasksCompleted: 0,
+            subtasksCompleted: 0
+        };
+    }
+}
+checkStatsReset();
+
+function incrementTaskStats() {
+    checkStatsReset();
+    todayStats.tasksCompleted++;
+}
+
+function incrementSubtaskStats() {
+    checkStatsReset();
+    todayStats.subtasksCompleted++;
+}
+
+// Статистика личных задач за день
+let personalDailyStats = {
+    date: new Date().toDateString(),
+    tasksCompleted: 0,
+    subtasksCompleted: 0
+};
+
+// Отслеживание показа отчёта
+let reportShownToday = localStorage.getItem('personal_report_shown') === new Date().toDateString();
+
+function checkPersonalStatsReset() {
+    const now = new Date();
+    const currentDate = now.toDateString();
+    if (personalDailyStats.date !== currentDate) {
+        personalDailyStats = {
+            date: currentDate,
+            tasksCompleted: 0,
+            subtasksCompleted: 0
+        };
+        reportShownToday = false;
+    }
+}
+checkPersonalStatsReset();
+
+
+/* ============================================
+   БЛОК ДЖАВА-3: DOM ЭЛЕМЕНТЫ
+   ============================================ */
+const boardEl = document.getElementById('board');
+const archiveOverlay = document.getElementById('archiveOverlay');
+const archiveListEl = document.getElementById('archiveList');
+const archiveCountEl = document.getElementById('archiveCount');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitleEl = document.getElementById('modalTitle');
+const modalTextEl = document.getElementById('modalText');
+const modalYesBtn = document.getElementById('modalYesButton');
+const modalNoBtn = document.getElementById('modalNoButton');
+const toastContainer = document.getElementById('toastContainer');
+const celebrationLayer = document.getElementById('celebrationLayer');
+const fileInput = document.getElementById('fileInput');
+
+let dragTaskId = null;
+let dragOverColumnId = null;
+let dragPlaceholder = null;
+let modalResolve = null;
+let pendingFocusSubtask = null;
+let pendingFocusTaskId = null;
+let pendingFocusLink = null;
+let lastDeletedTask = null;
+let dragSubtaskId = null;
+let dragSubtaskTaskId = null;
+let dragSubtaskPlaceholder = null;
+let cleanupTimers = {};
+
+/* ============================================
+   БЛОК ДЖАВА-4: БАЗОВЫЕ ФУНКЦИИ
+   ============================================ */
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    renderBoard();
+    renderArchive();
+}
+
+function cleanupEmptyItems(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    let changed = false;
+
+    // Удаляем пустые подзадачи (НЕ locked!)
+    const originalSubtasksCount = task.subtasks.length;
+    task.subtasks = task.subtasks.filter(sub => {
+        if (sub.isLocked) return true;
+        return sub.text && sub.text.trim() !== '';
+    });
+    if (task.subtasks.length !== originalSubtasksCount) changed = true;
+
+    // Удаляем пустые ссылки
+    if (task.links) {
+        const originalLinksCount = task.links.length;
+        task.links = task.links.filter(link => {
+            return link.url && link.url.trim() !== '';
+        });
+        if (task.links.length !== originalLinksCount) changed = true;
+    }
+
+    if (changed) {
+        saveState();
+        render();
+    }
+}
+
+
+function showToast(text) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = text;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(12px)';
+        setTimeout(() => toast.remove(), 450);
+    }, 2300);
+}
+
+function randomBetween(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+function randomEffect() {
+    return Math.floor(Math.random() * 6);
+}
+
+
+/* Функция для преобразования markdown ссылок в кликабельные */
+function linkifyText(text) {
+    if (!text) return text;
+    // Парсим markdown ссылки [текст](url)
+    const regex = /\[([^\]]+)\]\(([^\)]+)\)/g;
+    return text.replace(regex, '<a href="$2" target="_blank" style="color: #a5b4fc; text-decoration: underline;">$1</a>');
+}
+
+// Парсинг ссылок на номера (_N) в подзадачах
+function parseLinkReferences(text, taskLinks) {
+    if (!text) return text;
+
+    // Регулярное выражение для поиска _N (где N - число)
+    return text.replace(/_(\d+)/g, (match, num) => {
+        const linkIndex = parseInt(num) - 1; // Номера ссылок с 1, индексы с 0
+        const linkExists = taskLinks && taskLinks[linkIndex];
+
+        if (linkExists) {
+            // Ссылка существует - создаём кликабельный элемент
+            return `<span class="link-ref" data-link-index="${linkIndex}">🔗${num}</span>`;
+        } else {
+            // Ссылки нет - оставляем серым текстом
+            return `<span class="link-ref invalid">_${num}</span>`;
+        }
+    });
+}
+
+
+// Упрощённая функция для открытия ссылок при Ctrl+Click
+function addSimpleLinkHandler(element) {
+    element.addEventListener('click', (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        const text = element.textContent || element.innerText;
+        const md = text.match(/\[([^\]]+)\]\(([^\)]+)\)/);
+        if (md) { e.preventDefault(); window.open(md[2], '_blank'); return; }
+        const url = text.match(/(https?:\/\/[^\s]+)/);
+        if (url) { e.preventDefault(); window.open(url[1], '_blank'); }
+    });
+}
+
+
+// Устанавливаем HTML с кликабельными ссылками
+// Устанавливаем HTML с кликабельными ссылками и _N
+function setLinkifiedContent(element, text, taskLinks) {
+    if (!text) {
+        element.textContent = text || '';
+        return;
+    }
+
+    // Сначала парсим _N (ссылки на номера)
+    let processed = parseLinkReferences(text, taskLinks);
+
+    // Потом парсим markdown ссылки [текст](url)
+    processed = linkifyText(processed);
+
+    if (processed !== text) {
+        element.innerHTML = processed;
+
+        // Добавляем обработчики клика на .link-ref
+        element.querySelectorAll('.link-ref:not(.invalid)').forEach(linkRef => {
+            linkRef.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const linkIndex = parseInt(linkRef.dataset.linkIndex);
+                if (taskLinks && taskLinks[linkIndex] && taskLinks[linkIndex].url) {
+                    const url = taskLinks[linkIndex].url.startsWith('http://') || taskLinks[linkIndex].url.startsWith('https://')
+                        ? taskLinks[linkIndex].url
+                        : 'https://' + taskLinks[linkIndex].url;
+                    window.open(url, '_blank');
+                }
+            });
+        });
+    } else {
+        element.textContent = text;
+    }
+}
+
+
+/* ============================================
+   БЛОК ДЖАВА-5: ФУНКЦИИ ПРАЗДНОВАНИЯ (АНИМАЦИИ)
+   ============================================ */
+function spawnSparkles(x, y) {
+    for (let i = 0; i < 8; i++) {
+        const s = document.createElement('div');
+        s.className = 'sparkle';
+        s.style.left = `${x + randomBetween(-12, 12)}px`;
+        s.style.top = `${y + randomBetween(-12, 12)}px`;
+        celebrationLayer.appendChild(s);
+        setTimeout(() => s.remove(), 1000);
+    }
+}
+
+function spawnStars(x, y) {
+    for (let i = 0; i < 6; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        s.style.left = `${x + randomBetween(-20, 20)}px`;
+        s.style.top = `${y + randomBetween(-20, 20)}px`;
+        celebrationLayer.appendChild(s);
+        setTimeout(() => s.remove(), 1200);
+    }
+}
+
+function spawnConfetti(x, y) {
+    const colors = ['#a5b4fc', '#6366f1', '#4f46e5', '#4338ca', '#ec4899'];
+    for (let i = 0; i < 24; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = `${x + randomBetween(-60, 60)}px`;
+        c.style.top = `${y + randomBetween(-20, 20)}px`;
+        c.style.background = colors[Math.floor(Math.random() * colors.length)];
+        c.style.transform = `rotate(${randomBetween(-60, 60)}deg)`;
+        celebrationLayer.appendChild(c);
+        setTimeout(() => c.remove(), 1850);
+    }
+}
+
+function spawnFireworks(x, y) {
+    const colors = ['#a5b4fc', '#6366f1', '#4f46e5', '#fbbf24'];
+    for (let i = 0; i < 24; i++) {
+        const f = document.createElement('div');
+        f.className = 'firework';
+        f.style.left = `${x}px`;
+        f.style.top = `${y - 30}px`;
+        f.style.background = colors[Math.floor(Math.random() * colors.length)];
+        f.style.transform = `rotate(${i * 15}deg)`;
+        celebrationLayer.appendChild(f);
+        setTimeout(() => f.remove(), 1900);
+    }
+}
+
+function spawnBubbles(x, y) {
+    const colors = ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe'];
+    for (let i = 0; i < 8; i++) {
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        b.style.left = `${x + randomBetween(-40, 40)}px`;
+        b.style.top = `${y + randomBetween(-10, 10)}px`;
+        b.style.borderColor = colors[Math.floor(Math.random() * colors.length)];
+        celebrationLayer.appendChild(b);
+        setTimeout(() => b.remove(), 2200);
+    }
+}
+
+function spawnHearts(x, y) {
+    for (let i = 0; i < 6; i++) {
+        const h = document.createElement('div');
+        h.className = 'heart';
+        h.style.left = `${x + randomBetween(-30, 30)}px`;
+        h.style.top = `${y + randomBetween(-10, 10)}px`;
+        celebrationLayer.appendChild(h);
+        setTimeout(() => h.remove(), 1500);
+    }
+}
+
+function spawnLightning(x, y) {
+    for (let i = 0; i < 10; i++) {
+        const l = document.createElement('div');
+        l.className = 'lightning';
+        l.style.left = `${x + randomBetween(-40, 40)}px`;
+        l.style.top = `${y + randomBetween(-20, 20)}px`;
+        celebrationLayer.appendChild(l);
+        setTimeout(() => l.remove(), 1000);
+    }
+}
+
+function spawnRings(x, y) {
+    const colors = ['#6366f1', '#818cf8', '#a5b4fc', '#fbbf24'];
+    for (let i = 0; i < 4; i++) {
+        const r = document.createElement('div');
+        r.className = 'ring';
+        r.style.left = `${x - 15}px`;
+        r.style.top = `${y - 15}px`;
+        r.style.borderColor = colors[i % colors.length];
+        r.style.animationDelay = `${i * 0.15}s`;
+        celebrationLayer.appendChild(r);
+        setTimeout(() => r.remove(), 1350);
+    }
+}
+
+function playRandomCelebration(x, y) {
+    const effect = randomEffect();
+    switch (effect) {
+        case 0: spawnConfetti(x, y); spawnStars(x, y); break;
+        case 1: spawnSparkles(x, y); spawnBubbles(x, y); break;
+        case 2: spawnHearts(x, y); spawnSparkles(x, y); break;
+        case 3: spawnLightning(x, y); spawnRings(x, y); break;
+        case 4: spawnRings(x, y); spawnConfetti(x, y); break;
+        case 5: spawnStars(x, y); spawnHearts(x, y); break;
+    }
+}
+
+// Тройное празднование для блока "Сделано"
+function playTripleCelebration(x, y) {
+    playRandomCelebration(x, y);
+    setTimeout(() => playRandomCelebration(x + randomBetween(-30, 30), y + randomBetween(-20, 20)), 400);
+    setTimeout(() => playRandomCelebration(x + randomBetween(-30, 30), y + randomBetween(-20, 20)), 800);
+}
+
+/* ============================================
+   БЛОК ДЖАВА-6: МОДАЛЬНЫЕ ОКНА
+   ============================================ */
+function openConfirm(title, text) {
+    modalTitleEl.textContent = title;
+    modalTextEl.textContent = text;
+    modalOverlay.classList.add('open');
+    
+    return new Promise(resolve => {
+        modalResolve = resolve;
+        
+        const yesHandler = () => {
+            modalOverlay.classList.remove('open');
+            modalYesBtn.removeEventListener('click', yesHandler);
+            modalNoBtn.removeEventListener('click', noHandler);
+            resolve(true);
+        };
+        
+        const noHandler = () => {
+            modalOverlay.classList.remove('open');
+            modalYesBtn.removeEventListener('click', yesHandler);
+            modalNoBtn.removeEventListener('click', noHandler);
+            resolve(false);
+        };
+        
+        modalYesBtn.addEventListener('click', yesHandler);
+        modalNoBtn.addEventListener('click', noHandler);
+    });
+}
+
+function showAllDoneDialog(taskId, taskRect, totalSubtasks, cursorX, cursorY) {
+    const modal = document.createElement('div');
+    modal.className = 'all-done-modal';
+    modal.innerHTML = `
+        <div class="modal-title">Все подзадачи (${totalSubtasks}) выполнены!</div>
+        <div class="modal-buttons">
+            <button class="secondary modal-cancel-btn">Закрыть</button>
+            <button class="secondary modal-archive-btn">В архив</button>
+            <button class="secondary modal-delete-btn">Удалить</button>
+        </div>
+    `;
+
+    modal.style.left = `${Math.max(10, cursorX - 150)}px`;
+    modal.style.top = `${Math.max(10, cursorY + 10)}px`;
+    modal.style.opacity = '0';
+    modal.style.transform = 'scale(0.9)';
+    modal.style.transition = 'all 0.15s ease-out';
+
+    document.body.appendChild(modal);
+
+    requestAnimationFrame(() => {
+        modal.style.opacity = '1';
+        modal.style.transform = 'scale(1)';
+    });
+
+    const cancelBtn = modal.querySelector('.modal-cancel-btn');
+    const archiveBtn = modal.querySelector('.modal-archive-btn');
+    const deleteBtn = modal.querySelector('.modal-delete-btn');
+
+    const closeModal = () => {
+        modal.style.opacity = '0';
+        modal.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            if (modal.parentNode) document.body.removeChild(modal);
+        }, 120);
+    };
+
+    cancelBtn.onclick = () => {
+        closeModal();
+    };
+
+    archiveBtn.onclick = () => {
+        closeModal();
+        archiveTask(taskId, false);
+    };
+
+    deleteBtn.onclick = () => {
+        closeModal();
+        showConfirm(
+            'Удалить задачу?',
+            'Задача будет удалена без возможности восстановления'
+        ).then(confirmDelete => {
+            if (!confirmDelete) return;
+            const card = document.querySelector(`.card[data-id="${taskId}"]`);
+            if (card) {
+                card.style.transition = 'all 0.5s ease-out';
+                card.style.transform = 'scale(0) rotate(45deg)';
+                card.style.opacity = '0';
+                setTimeout(() => {
+                    const idx = state.tasks.findIndex(t => t.id === taskId);
+                    if (idx !== -1) {
+                        state.tasks.splice(idx, 1);
+                        saveState();
+                        renderBoard();
+                    }
+                }, 500);
+            } else {
+                const idx = state.tasks.findIndex(t => t.id === taskId);
+                if (idx !== -1) {
+                    state.tasks.splice(idx, 1);
+                    saveState();
+                    renderBoard();
+                }
+            }
+        });
+    };
+}
+
+
+/* ============================================
+   БЛОК ДЖАВА-7: ФУНКЦИИ ЗАДАЧ
+   ============================================ */
+function updateColumnCounts() {
+    const counts = {};
+    for (const col of state.columns) counts[col.id] = 0;
+    for (const t of state.tasks) {
+        if (!t.archivedAt) counts[t.columnId] = (counts[t.columnId] || 0) + 1;
+    }
+    
+    document.querySelectorAll('.column').forEach(colEl => {
+        const colId = colEl.dataset.id;
+        const countEl = colEl.querySelector('.column-count');
+        if (countEl) countEl.textContent = counts[colId] || 0;
+    });
+    
+    // Обновляем счётчик для done-box
+    const doneBox = document.querySelector('.done-box');
+    if (doneBox) {
+        const countEl = doneBox.querySelector('.column-count');
+        if (countEl) countEl.textContent = counts['done'] || 0;
+    }
+}
+
+function archiveTask(taskId, withDelay = false) {
+    const idx = state.tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return;
+
+    if (withDelay) {
+        const cardEl = document.querySelector(`[data-id="${taskId}"]`);
+        if (cardEl) {
+            setTimeout(() => {
+                cardEl.classList.add('archiving');
+            });
+            const rect = cardEl.getBoundingClientRect();
+            spawnFireworks(rect.left + rect.width/2, rect.top + rect.height/2 - 20);
+            spawnBubbles(rect.left + rect.width/2, rect.top + rect.height/2);
+        }
+        
+        setTimeout(() => {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                const idx2 = state.tasks.indexOf(task);
+                if (idx2 !== -1) {
+                    const t = state.tasks.splice(idx2, 1)[0];
+                    t.archivedAt = Date.now();
+                    state.archive.unshift(t);
+					incrementTaskStats();
+                    saveState();
+                    showToast('В архив!');
+                }
+            }
+        }, 900);
+    } else {
+        const task = state.tasks.splice(idx, 1)[0];
+        task.archivedAt = Date.now();
+        state.archive.unshift(task);
+		incrementTaskStats();
+        saveState();
+        showToast('В архив!');
+    }
+}
+
+function deleteTask(taskId) {
+    const idx = state.tasks.findIndex(t => t.id === taskId);
+    if (idx !== -1) {
+        // Анимация растворения
+        const cardEl = document.querySelector(`.card[data-id="${taskId}"]`);
+        if (cardEl) {
+            const deleteEffects = [
+                () => { cardEl.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out'; cardEl.style.opacity = '0'; cardEl.style.transform = 'scale(0.9) translateY(-20px)'; },
+                () => { cardEl.style.transition = 'opacity 0.5s, transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)'; cardEl.style.opacity = '0'; cardEl.style.transform = 'translateY(-100px) scale(0.3)'; },
+                () => { cardEl.style.transition = 'opacity 0.5s, transform 0.5s'; cardEl.style.opacity = '0'; cardEl.style.transform = 'translateX(-150px) rotate(-15deg) scale(0.8)'; },
+                () => { cardEl.style.transition = 'opacity 0.5s, transform 0.5s'; cardEl.style.opacity = '0'; cardEl.style.transform = 'translateX(150px) rotate(15deg) scale(0.8)'; },
+                () => { cardEl.style.transition = 'all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'; cardEl.style.opacity = '0'; cardEl.style.transform = 'scale(0.01) rotate(180deg)'; },
+                () => { cardEl.style.transition = 'opacity 0.5s, transform 0.6s'; cardEl.style.opacity = '0'; cardEl.style.transform = 'rotateY(90deg) scale(0.8)'; cardEl.style.transformOrigin = 'center'; },
+                () => { cardEl.style.transition = 'opacity 0.6s, transform 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045)'; cardEl.style.opacity = '0'; cardEl.style.transform = 'translateY(100px) scale(0.7) rotate(5deg)'; },
+                () => { cardEl.style.transition = 'opacity 0.5s, transform 0.6s'; cardEl.style.opacity = '0'; cardEl.style.transform = 'rotate(360deg) scale(0.2)'; }
+            ];
+            deleteEffects[Math.floor(Math.random() * deleteEffects.length)]();
+
+            setTimeout(() => {
+                lastDeletedTask = JSON.parse(JSON.stringify(state.tasks[idx]));
+                state.tasks.splice(idx, 1);
+                saveState();
+                showToast('Задача удалена');
+                updateUndoButton();
+                render();
+            }, 600);
+        } else {
+            lastDeletedTask = JSON.parse(JSON.stringify(state.tasks[idx]));
+            state.tasks.splice(idx, 1);
+            saveState();
+            showToast('Задача удалена');
+            updateUndoButton();
+            render();
+        }
+    }
+}
+
+function undoDeleteTask() {
+    if (!lastDeletedTask) return;
+    state.tasks.unshift(lastDeletedTask);
+    ensureTasksOrderForColumn(lastDeletedTask.columnId);
+    state.tasksOrder[lastDeletedTask.columnId].unshift(lastDeletedTask.id);
+    const restoredTitle = lastDeletedTask.title || 'Без названия';
+    lastDeletedTask = null;
+    saveState();
+    showToast(`Возвращено: ${restoredTitle}`);
+    updateUndoButton();
+}
+
+function updateUndoButton() {
+    const btn = document.getElementById('undoDeleteBtn');
+    if (btn) {
+        btn.disabled = !lastDeletedTask;
+    }
+}
+
+function deleteArchivedTask(taskId) {
+    const idx = state.archive.findIndex(t => t.id === taskId);
+    if (idx !== -1) {
+        state.archive.splice(idx, 1);
+        saveState();
+        showToast('Из архива удалено');
+    }
+}
+
+function restoreTask(taskId) {
+    const idx = state.archive.findIndex(t => t.id === taskId);
+    if (idx === -1) return;
+    
+    const task = state.archive.splice(idx, 1)[0];
+    task.archivedAt = null;
+    task.columnId = 'napadalo';
+    state.tasks.unshift(task);
+    saveState();
+    showToast('Восстановлено');
+}
+
+/* ============================================
+   БЛОК ДЖАВА-8: ПОРЯДОК ЗАДАЧ В КОЛОНКАХ
+   ============================================ */
+function ensureTasksOrderForColumn(columnId) {
+    if (!state.tasksOrder) state.tasksOrder = {};
+    if (!state.tasksOrder[columnId]) {
+        const ids = state.tasks
+            .filter(t => t.columnId === columnId && !t.archivedAt)
+            .sort((a, b) => a.createdAt - b.createdAt)
+            .map(t => t.id);
+        state.tasksOrder[columnId] = ids;
+    }
+}
+
+function reorderInColumn(columnId, taskId, beforeTaskId) {
+    ensureTasksOrderForColumn(columnId);
+    const list = state.tasksOrder[columnId].filter(id => {
+        const t = state.tasks.find(tt => tt.id === id);
+        return t && !t.archivedAt && t.columnId === columnId;
+    });
+
+    if (!list.includes(taskId)) {
+        list.push(taskId);
+    }
+
+    const idx = list.indexOf(taskId);
+    if (idx !== -1) list.splice(idx, 1);
+
+    if (beforeTaskId) {
+        const beforeIdx = list.indexOf(beforeTaskId);
+        if (beforeIdx !== -1) {
+            list.splice(beforeIdx, 0, taskId);
+        } else {
+            list.push(taskId);
+        }
+    } else {
+        list.push(taskId);
+    }
+
+    state.tasksOrder[columnId] = list;
+}
+
+function handleDropTask(taskId, newColumnId, beforeTaskId, evt) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const rect = boardEl.getBoundingClientRect();
+    const x = evt.clientX;
+    const y = evt.clientY;
+
+    task.columnId = newColumnId;
+    reorderInColumn(newColumnId, taskId, beforeTaskId);
+    saveState();
+    
+    // Тройное празднование для "Сделано"
+    if (newColumnId === 'done') {
+        playTripleCelebration(x, y);
+        archiveTask(taskId, true);
+    } else {
+        playRandomCelebration(x, y);
+    }
+}
+
+function getTaskAge(createdAt) {
+    const now = Date.now();
+    const ageMs = now - createdAt;
+    const ageDays = Math.floor(ageMs / 1000 / 60 / 60 / 24);
+
+    if (ageDays < 3) return { class: 'age-fresh', text: 'свежая' };
+    else if (ageDays < 7) return { class: 'age-normal', text: `${ageDays}д` };
+    else return { class: 'age-old', text: `${ageDays}д` };
+}
+
+/* ============================================
+   БЛОК ДЖАВА-9: РЕНДЕР ПОДЗАДАЧ
+   ============================================ */
+function renderSubtasks(task, container, cardEl) {
+    container.innerHTML = '';
+
+
+
+    if (!task.subtasks) task.subtasks = [];
+
+    // Добавляем закреплённую подзадачу "Письмо о сделанном" если её нет
+
+        // ЗАКРЕПЫ создаются только в createTaskInColumn  }
+
+
+    const doneCount = task.subtasks.filter(s => s.done).length;
+    const progress = task.subtasks.length > 0 ? (doneCount / task.subtasks.length) * 100 : 0;
+
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'progress-bar-container';
+    const progressFill = document.createElement('div');
+    progressFill.className = 'progress-bar-fill';
+    progressFill.style.width = `${progress}%`;
+    progressContainer.appendChild(progressFill);
+    container.appendChild(progressContainer);
+
+    // Сортируем подзадачи: обычные сверху, письмо снизу
+    const regularSubtasks = task.subtasks.filter(s => !s.isLocked);
+    const lockedSubtasks = task.subtasks.filter(s => s.isLocked);
+    const sortedSubtasks = [...regularSubtasks, ...lockedSubtasks];
+
+    sortedSubtasks.forEach((sub) => {
+        const row = document.createElement('div');
+        row.className = `subtask-row ${sub.done ? 'completed' : ''}`;
+        if (sub.isLocked) row.classList.add('subtask-mail-locked');
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = sub.done;
+        cb.addEventListener('change', (e) => {
+            sub.done = e.target.checked;
+			if (sub.done) incrementSubtaskStats();
+            const rect = e.target.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            spawnSparkles(x, y);
+            spawnStars(x, y);
+
+            row.classList.toggle('completed', sub.done);
+
+            const allDone = task.subtasks.length > 0 && task.subtasks.every(s => s.done);
+            if (allDone) {
+                const cardRect = cardEl.getBoundingClientRect();
+                spawnFireworks(cardRect.left + cardRect.width / 2, cardRect.top + cardRect.height / 2);
+                spawnBubbles(cardRect.left + cardRect.width / 2, cardRect.top + cardRect.height / 2);
+                setTimeout(() => {
+// showAllDoneDialog(task.id, cardRect, task.subtasks.length, x, y);
+                }, 1100);
+            } else {
+                saveState();
+            }
+        });
+
+        const span = document.createElement('span');
+        span.className = 'subtask-text';
+        setLinkifiedContent(span, sub.text, task.links);
+        span.contentEditable = true;
+        span.dataset.subtaskId = sub.id;
+        span.dataset.taskId = task.id;
+        span.setAttribute('data-placeholder', 'Подзадача...');
+        
+        // Удаление пустой подзадачи при потере фокуса
+
+        // Alt+Стрелки для перемещения подзадачи
+        span.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault();
+                const currentIdx = task.subtasks.findIndex(s => s.id === sub.id);
+                if (currentIdx === -1) return;
+                const targetIdx = e.key === 'ArrowUp' ? currentIdx - 1 : currentIdx + 1;
+                if (targetIdx < 0 || targetIdx >= task.subtasks.length) return;
+                [task.subtasks[currentIdx], task.subtasks[targetIdx]] =
+                    [task.subtasks[targetIdx], task.subtasks[currentIdx]];
+                saveState();
+                renderBoard();
+                setTimeout(() => {
+                    const newSpan = document.querySelector(`.subtask-text[data-subtask-id="${sub.id}"]`);
+                    if (newSpan) {
+                        newSpan.focus();
+                        const range = document.createRange();
+                        const sel = window.getSelection();
+                        range.selectNodeContents(newSpan);
+                        range.collapse(false);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }, 50);
+            }
+        });
+
+        span.addEventListener('blur', () => {
+            setTimeout(() => {
+                const newText = span.textContent.trim();
+                const stillExists = task.subtasks.find(s => s.id === sub.id);
+                if (!stillExists) return;
+                
+                // Не удаляем свежесозданные подзадачи (< 500ms)
+                const isJustCreated = sub.createdAt && (Date.now() - sub.createdAt < 200);
+
+                if (newText === '' && !sub.isLocked && !isJustCreated) {
+                    const subIdx = task.subtasks.findIndex(s => s.id === sub.id);
+                    if (subIdx !== -1) {
+                        task.subtasks.splice(subIdx, 1);
+                        saveState();
+                    }
+                } else if (newText !== sub.text) {
+                    sub.text = newText;
+                    saveState();
+                }
+            }, 100);
+        });
+
+        // Создание новой подзадачи по Enter
+        span.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Сохраняем текст текущей подзадачи
+                sub.text = span.textContent.trim();
+                
+                const newSubId = 'sub_' + Math.random().toString(36).slice(2, 8);
+                const currentIdx = task.subtasks.findIndex(s => s.id === sub.id);
+                const insertIdx = sub.isLocked ? currentIdx : currentIdx + 1;
+                
+                task.subtasks.splice(insertIdx, 0, {
+                    id: newSubId,
+                    text: '',
+                    done: false,
+                    isLocked: false
+                });
+                
+                pendingFocusSubtask = newSubId;
+                pendingFocusTaskId = task.id;
+                saveState();
+            }
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'mini-btn delete-task-btn';
+        deleteBtn.textContent = '×';
+        deleteBtn.title = 'Удалить';
+        deleteBtn.addEventListener('click', () => {
+            const subIdx = task.subtasks.findIndex(s => s.id === sub.id);
+            if (subIdx !== -1) {
+                task.subtasks.splice(subIdx, 1);
+                saveState();
+            }
+        });
+
+        row.appendChild(cb);
+
+    // Drag-and-drop для подзадач (только для незаблокированных)
+
+        row.appendChild(span);
+        row.appendChild(deleteBtn);
+        container.appendChild(row);
+
+        // Фокус на новую подзадачу
+        if (pendingFocusSubtask && pendingFocusTaskId === task.id && sub.id === pendingFocusSubtask) {
+            const targetSpan = span;
+            pendingFocusSubtask = null;
+            pendingFocusTaskId = null;
+            setTimeout(() => {
+                if (document.body.contains(targetSpan)) {
+                    targetSpan.focus();
+                    // Ставим курсор в конец
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    range.selectNodeContents(targetSpan);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }, 150);
+        }
+    });
+
+    const footer = document.createElement('div');
+    footer.className = 'subtasks-footer';
+    const progressText = document.createElement('div');
+    progressText.className = 'progress';
+    progressText.textContent = task.subtasks.length ? `${doneCount}/${task.subtasks.length}` : '0/0';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-subtask-btn';
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', (e) => {
+        const cardEl = document.querySelector(`.card[data-id="${task.id}"]`);
+        if (cardEl) {
+            const subtasksEl = cardEl.querySelector('.subtasks');
+            if (subtasksEl) subtasksEl.style.maxHeight = '1000px';
+        }
+        const id = 'sub_' + Math.random().toString(36).slice(2, 8);
+        const newSub = { id, text: '', done: false, isLocked: false, createdAt: Date.now() };
+        const mailIdx = task.subtasks.findIndex(s => s.isLocked);
+        if (mailIdx !== -1) {
+            task.subtasks.splice(mailIdx, 0, newSub);
+        } else {
+            task.subtasks.push(newSub);
+        }
+        pendingFocusSubtask = id;
+        pendingFocusTaskId = task.id;
+        saveState();
+    });
+    const addLinkBtn = document.createElement('button');
+    addLinkBtn.className = 'add-subtask-btn';
+    addLinkBtn.textContent = '🔗';
+    addLinkBtn.title = 'Связать ссылки с подзадачей можно через их номера, формата _1 _2';
+    addLinkBtn.addEventListener('click', (e) => {
+        if (!task.links) task.links = [];
+        const id = 'link_' + Math.random().toString(36).slice(2, 8);
+        task.links.push({ id, url: '' });
+        pendingFocusLink = id;
+        pendingFocusTaskId = task.id;
+        saveState();
+        refreshSubtasksLinksInCard(task.id);
+    });
+
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'footer-buttons';
+    btnContainer.appendChild(addBtn);
+    btnContainer.appendChild(addLinkBtn);
+
+    footer.appendChild(progressText);
+    footer.appendChild(btnContainer);
+    container.appendChild(footer);
+}
+
+
+
+/* Рендеринг ссылок */
+function renderLinks(task, container) {
+    if (!task.links) task.links = [];
+    if (task.links.length === 0) return;
+
+    const linksContainer = document.createElement('div');
+    linksContainer.className = 'links-container';
+
+    // Заголовок убран, оставлена только линия через border-top
+
+    task.links.forEach((link, index) => {
+        const row = document.createElement('div');
+        row.className = 'link-row';
+        row.dataset.linkId = link.id;
+
+        const numSpan = document.createElement('span');
+        numSpan.className = 'link-number';
+        numSpan.textContent = `${index + 1}.`;
+
+        const urlSpan = document.createElement('span');
+        urlSpan.className = 'link-url';
+        urlSpan.contentEditable = false;
+        urlSpan.textContent = link.url || '';
+        urlSpan.setAttribute('data-placeholder', 'https://...');
+
+        // Одинарный клик - открываем ссылку
+        urlSpan.addEventListener('click', (e) => {
+            if (urlSpan.contentEditable === 'false' && link.url) {
+                e.preventDefault();
+                const url = link.url.startsWith('http://') || link.url.startsWith('https://') 
+                    ? link.url 
+                    : 'https://' + link.url;
+                window.open(url, '_blank');
+            }
+        });
+
+        // Двойной клик - включаем редактирование
+
+        urlSpan.addEventListener('blur', () => {
+            setTimeout(() => {
+                urlSpan.contentEditable = false;
+                const newUrl = urlSpan.textContent.trim();
+                const stillExists = task.links.find(l => l.id === link.id);
+                if (!stillExists) return;
+
+                if (newUrl === '') {
+                    const linkIdx = task.links.findIndex(l => l.id === link.id);
+                    if (linkIdx !== -1) {
+                        task.links.splice(linkIdx, 1);
+                        saveState();
+                        refreshSubtasksLinksInCard(task.id);
+                    }
+                } else if (newUrl !== link.url) {
+                    link.url = newUrl;
+                    saveState();
+                }
+            }, 50);
+        });
+
+        urlSpan.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                // Если это последняя ссылка, создаём новую
+                const currentIdx = task.links.findIndex(l => l.id === link.id);
+                const isLast = currentIdx === task.links.length - 1;
+                if (isLast) {
+                    const id = 'link_' + Math.random().toString(36).slice(2, 8);
+                    task.links.push({ id, url: '' });
+                    pendingFocusLink = id;
+                    pendingFocusTaskId = task.id;
+                    saveState();
+                    refreshSubtasksLinksInCard(task.id);
+                } else {
+                    urlSpan.blur();
+                }
+            }
+        });
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'mini-btn';
+        editBtn.innerHTML = '✎';
+        editBtn.title = 'Редактировать';
+        editBtn.style.fontSize = '11px';
+        editBtn.style.padding = '0';
+        editBtn.style.width = '16px';
+        editBtn.style.height = '16px';
+        editBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            urlSpan.contentEditable = true;
+            setTimeout(() => urlSpan.focus(), 0);
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(urlSpan);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'mini-btn delete-task-btn';
+        deleteBtn.textContent = '×';
+        deleteBtn.title = 'Удалить';
+        deleteBtn.addEventListener('click', () => {
+            const idx = task.links.findIndex(l => l.id === link.id);
+            if (idx !== -1) {
+                task.links.splice(idx, 1);
+                saveState();
+                refreshSubtasksLinksInCard(task.id);
+            }
+        });
+
+        row.appendChild(numSpan);
+        row.appendChild(urlSpan);
+        row.appendChild(editBtn);
+        row.appendChild(deleteBtn);
+        linksContainer.appendChild(row);
+
+        // Фокус на новую ссылку и включаем редактирование
+        if (pendingFocusLink && pendingFocusTaskId === task.id && link.id === pendingFocusLink) {
+            pendingFocusLink = null;
+            pendingFocusTaskId = null;
+            setTimeout(() => {
+                urlSpan.contentEditable = true;
+                urlSpan.focus();
+            }, 30);
+        }
+    });
+
+    // Вставляем перед footer, если он есть
+    const footer = container.querySelector('.subtasks-footer');
+    if (footer) {
+        container.insertBefore(linksContainer, footer);
+    } else {
+        container.appendChild(linksContainer);
+    }
+}
+
+/* ============================================
+   БЛОК ДЖАВА-10: РЕНДЕР КАРТОЧКИ
+   ============================================ */
+// Обновление ссылок _N в подзадачах карточки (гибридный подход)
+function refreshSubtasksLinksInCard(taskId) {
+    const cardEl = document.querySelector(`.card[data-id="${taskId}"]`);
+    if (!cardEl) return;
+
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task || !task.subtasks) return;
+
+    // Обновляем все span.subtask-text в этой карточке
+    cardEl.querySelectorAll('.subtask-text').forEach(span => {
+        const subtaskId = span.dataset.subtaskId;
+        const subtask = task.subtasks.find(s => s.id === subtaskId);
+
+        if (subtask) {
+            // Перерисовываем текст подзадачи с учётом новых ссылок
+            setLinkifiedContent(span, subtask.text, task.links);
+        }
+    });
+}
+
+function renderCard(task) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.draggable = true;
+    
+    // Автоочистка через 5 секунд
+    card.addEventListener('focusout', (e) => {
+        if (!card.contains(e.relatedTarget)) {
+            if (cleanupTimers[task.id]) {
+                clearTimeout(cleanupTimers[task.id]);
+            }
+            cleanupTimers[task.id] = setTimeout(() => {
+                cleanupEmptyItems(task.id);
+            }, 5000);
+        }
+    });
+
+    card.addEventListener('focusin', () => {
+        if (cleanupTimers[task.id]) {
+            clearTimeout(cleanupTimers[task.id]);
+            delete cleanupTimers[task.id];
+        }
+    });
+    card.dataset.id = task.id;
+
+            // ===== DRAG & DROP ВНЕШНИХ ССЫЛОК =====
+            card.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                card.classList.add("drag-over-external");
+            });
+
+            card.addEventListener("dragleave", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                card.classList.remove("drag-over-external");
+            });
+
+            card.addEventListener("drop", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                card.classList.remove("drag-over-external");
+
+                // Получаем URL из события
+                let droppedUrl = "";
+
+                // Пробуем получить URL из разных источников
+                if (e.dataTransfer.types.includes("text/uri-list")) {
+                    droppedUrl = e.dataTransfer.getData("text/uri-list");
+                } else if (e.dataTransfer.types.includes("text/plain")) {
+                    const text = e.dataTransfer.getData("text/plain");
+                    // Проверяем, похоже ли на URL
+                    if (text.startsWith("http://") || text.startsWith("https://") || text.includes("://")) {
+                        droppedUrl = text;
+                    }
+                }
+
+                if (droppedUrl) {
+                    droppedUrl = droppedUrl.trim().split('\n')[0]; // Берём первую строку
+
+                    if (!task.links) task.links = [];
+                    const newLinkId = `link${Math.random().toString(36).slice(2, 8)}`;
+                    task.links.push({ id: newLinkId, url: droppedUrl });
+                    saveState();
+                    showToast("🔗 Ссылка добавлена");
+                }
+            });
+
+    if (task.collapsed) card.classList.add('collapsed');
+
+    card.addEventListener('dragstart', (e) => {
+        dragTaskId = task.id;
+        dragOverColumnId = task.columnId;
+        card.classList.add('dragging');
+        dragPlaceholder = document.createElement('div');
+        dragPlaceholder.className = 'card-placeholder';
+        card.parentElement.insertBefore(dragPlaceholder, card.nextSibling);
+        e.dataTransfer.effectAllowed = 'move';
+    });
+
+    card.addEventListener('dragend', () => {
+        dragTaskId = null;
+        dragOverColumnId = null;
+        card.classList.remove('dragging');
+        if (dragPlaceholder) {
+            dragPlaceholder.remove();
+            dragPlaceholder = null;
+        }
+    });
+
+    const header = document.createElement('div');
+    header.className = 'card-header';
+
+    const title = document.createElement('div');
+    title.className = 'title';
+    setLinkifiedContent(title, task.title);
+    title.contentEditable = true;
+    title.setAttribute('data-placeholder', 'Название задачи...');
+  
+    title.addEventListener('blur', () => {
+        const newTitle = title.textContent.trim();
+        const hasUnlockedSubtasks = task.subtasks && task.subtasks.some(s => !s.isLocked);
+        if (!newTitle && !task.description && !hasUnlockedSubtasks) {
+            setTimeout(() => deleteTask(task.id), 300);
+            return;
+        }
+        task.title = newTitle;
+        saveState();
+    });
+
+    title.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            title.blur();
+            setTimeout(() => {
+                const cardEl = document.querySelector(`.card[data-id="${task.id}"]`);
+                if (cardEl) {
+                    const descEl = cardEl.querySelector('.description');
+                    if (descEl) descEl.focus();
+                }
+            }, 50);
+        }
+    });
+
+    const quickBtnWrap = document.createElement('div');
+    header.appendChild(title);
+
+    // Клик на header вне title - фокус на title
+    header.addEventListener('click', (e) => {
+        if (e.target === header) {
+            title.focus();
+        }
+    });
+    header.appendChild(quickBtnWrap);
+
+    const description = document.createElement('div');
+    description.className = 'description';
+    setLinkifiedContent(description, task.description);
+    description.contentEditable = true;
+    description.setAttribute('data-placeholder', 'Описание...');
+    description.addEventListener('blur', () => {
+        task.description = description.textContent.trim();
+        saveState();
+    });
+
+    description.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            description.blur();
+            const id = 'sub_' + Math.random().toString(36).slice(2, 8);
+            const mailIdx = task.subtasks.findIndex(s => s.isLocked);
+            if (mailIdx !== -1) {
+                task.subtasks.splice(mailIdx, 0, { id, text: '', done: false, isLocked: false });
+            } else {
+                task.subtasks.push({ id, text: '', done: false, isLocked: false });
+            }
+            pendingFocusSubtask = id;
+            pendingFocusTaskId = task.id;
+            saveState();
+        }
+    });
+
+    const meta = document.createElement('div');
+    meta.className = 'meta-row';
+
+    const priorityToggle = document.createElement('div');
+    priorityToggle.className = 'priority-toggle';
+    const priorities = ['low', 'medium', 'high'];
+    priorities.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = `priority-btn ${p}`;
+        btn.title = p === 'low' ? 'Низкий' : p === 'medium' ? 'Средний' : 'Высокий';
+        if (task.priority === p || (!task.priority && p === 'low')) {
+            btn.classList.add('active');
+        }
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            task.priority = p;
+            priorityToggle.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            saveState();
+        });
+        priorityToggle.appendChild(btn);
+    });
+
+    const rightMeta = document.createElement('div');
+    rightMeta.style.display = 'flex';
+    rightMeta.style.alignItems = 'center';
+    rightMeta.style.gap = '6px';
+
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.className = 'date-input';
+    dateInput.value = task.dueDate;
+    dateInput.addEventListener('change', () => {
+        task.dueDate = dateInput.value;
+        saveState();
+    });
+
+    const tags = document.createElement('div');
+    tags.className = 'tags';
+    tags.textContent = task.tags;
+    tags.contentEditable = true;
+    tags.setAttribute('data-placeholder', 'Теги...');
+    tags.addEventListener('blur', () => {
+        task.tags = tags.textContent.trim();
+        saveState();
+    });
+    tags.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            tags.blur();
+        }
+    });
+
+    rightMeta.appendChild(dateInput);
+    rightMeta.appendChild(tags);
+
+    meta.appendChild(priorityToggle);
+    meta.appendChild(rightMeta);
+
+    const subtasksWrap = document.createElement('div');
+    subtasksWrap.className = 'subtasks';
+    renderSubtasks(task, subtasksWrap, card);
+    renderLinks(task, subtasksWrap);
+
+    const footer = document.createElement('div');
+    footer.className = 'card-footer';
+
+    const age = getTaskAge(task.createdAt);
+    const ageInd = document.createElement('div');
+    ageInd.className = `age-indicator ${age.class}`;
+    ageInd.textContent = age.text;
+
+    const btnGroup = document.createElement('div');
+    btnGroup.style.display = 'flex';
+    btnGroup.style.gap = '6px';
+
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'card-delete-btn';
+    deleteBtn.innerHTML = '×';
+    deleteBtn.title = 'Удалить задачу';
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteTask(task.id);
+    });
+
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'card-collapse-btn';
+    collapseBtn.innerHTML = task.collapsed ? '▶' : '▼';
+    collapseBtn.title = 'Свернуть/развернуть';
+    collapseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        task.collapsed = !task.collapsed;
+        card.classList.toggle('collapsed', task.collapsed);
+        collapseBtn.innerHTML = task.collapsed ? '▶' : '▼';
+        saveState();
+    });
+
+    btnGroup.appendChild(deleteBtn);
+
+    footer.appendChild(ageInd);
+    footer.appendChild(btnGroup);
+
+    card.appendChild(deleteBtn);
+    card.appendChild(collapseBtn);
+    card.appendChild(header);
+    card.appendChild(description);
+    card.appendChild(meta);
+    card.appendChild(subtasksWrap);
+    card.appendChild(footer);
+
+    return card;
+}
+
+/* ============================================
+   БЛОК ДЖАВА-11: РЕНДЕР ДОСКИ
+   ============================================ */
+// ========================================
+// БЛОК: ФУНКЦИИ ПАНЕЛИ ШАБЛОНОВ
+// ========================================
+
+let draggedTemplateId = null;
+
+function loadTemplates() {
+    try {
+        const saved = localStorage.getItem('kanban_templates');
+        if (saved) {
+            const loaded = JSON.parse(saved);
+            if (Array.isArray(loaded)) {
+                TEMPLATES = loaded;
+            }
+        }
+    } catch (e) {
+        console.error('Ошибка загрузки шаблонов:', e);
+    }
+}
+
+function saveTemplates() {
+    try {
+        localStorage.setItem('kanban_templates', JSON.stringify(TEMPLATES));
+    } catch (e) {
+        console.error('Ошибка сохранения шаблонов:', e);
+    }
+}
+
+function renderTemplatesBar() {
+    const container = document.getElementById('templatesContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (TEMPLATES.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'templates-empty';
+        empty.textContent = 'Перетащи сюда задачу';
+        container.appendChild(empty);
+        return;
+    }
+
+    TEMPLATES.forEach((template, index) => {
+        const btn = document.createElement('div');
+        btn.className = 'template-btn';
+        btn.draggable = true;
+        btn.textContent = template.emoji;
+        btn.dataset.templateId = template.id;
+        btn.dataset.templateIndex = index;
+        btn.title = template.fullName;
+
+        const tooltip = document.createElement('span');
+        tooltip.className = 'tooltip';
+        tooltip.textContent = template.fullName;
+        btn.appendChild(tooltip);
+
+        const deleteBtn = document.createElement('div');
+        deleteBtn.className = 'delete-template';
+        deleteBtn.textContent = '×';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteTemplate(index);
+        });
+        btn.appendChild(deleteBtn);
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const defaultColumn = APPCONFIG.columns[0].id;
+            createTaskFromTemplate(template.id, defaultColumn, null);
+        });
+
+        btn.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'copy';
+            draggedTemplateId = template.id;
+            dragTaskId = 'TEMPLATE_DRAG_' + template.id;
+            btn.style.opacity = '0.5';
+        });
+
+        btn.addEventListener('dragend', (e) => {
+            btn.style.opacity = '1';
+            if (dragTaskId && dragTaskId.startsWith('TEMPLATE_DRAG_')) {
+                dragTaskId = null;
+            }
+            draggedTemplateId = null;
+        });
+
+        container.appendChild(btn);
+    });
+}
+
+function deleteTemplate(index) {
+    if (index >= 0 && index < TEMPLATES.length) {
+        TEMPLATES.splice(index, 1);
+        saveTemplates();
+        renderTemplatesBar();
+    }
+}
+
+function createTaskFromTemplate(templateId, targetColumnId, beforeTaskId) {
+    const template = TEMPLATES.find(t => t.id === templateId);
+    if (!template) return;
+
+    const now = Date.now();
+    const newTask = {
+        id: 'task_' + now + '_' + Math.random().toString(36).substr(2, 9),
+        columnId: targetColumnId,
+        title: template.template.title,
+        description: template.template.description || '',
+        priority: template.template.priority || 'low',
+        createdAt: now,
+        subtasks: (template.template.subtasks || []).map(sub => ({
+            id: 'sub_' + now + '_' + Math.random().toString(36).substr(2, 9),
+            text: sub.text,
+            completed: false,
+            isLocked: sub.isLocked || false
+        })),
+        links: (template.template.links || []).map(link => ({
+            id: 'link_' + Math.random().toString(36).slice(2, 8),
+            url: link.url
+        }))
+    };
+
+    state.tasks.push(newTask);
+
+    // ВАЖНО: Используем reorderInColumn для правильной позиции
+    reorderInColumn(targetColumnId, newTask.id, beforeTaskId);
+
+    saveState();
+    renderBoard();
+}
+
+function addTemplateFromTask(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const emoji = task.title.charAt(0) || '📌';
+
+    const newTemplate = {
+        id: 'template_' + Date.now(),
+        emoji: emoji,
+        fullName: task.title.substring(0, 30),
+        template: {
+            title: task.title,
+            description: task.description || '',
+            subtasks: (task.subtasks || []).map(sub => ({
+                text: sub.text,
+                completed: false,
+                isLocked: sub.isLocked || false
+            })),
+            priority: task.priority || 'low',
+            links: (task.links || []).map(link => ({ url: link.url }))
+        }
+    };
+
+    TEMPLATES.push(newTemplate);
+    saveTemplates();
+    renderTemplatesBar();
+
+    showToast('✓ Шаблон создан: ' + emoji);
+}
+
+function initTemplatesDropZone() {
+    const container = document.getElementById('templatesContainer');
+    if (!container) return;
+
+    container.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (!dragTaskId) return;
+        if (dragTaskId.startsWith('TEMPLATE_DRAG_')) return;
+
+        container.classList.add('drag-over');
+    });
+
+    container.addEventListener('dragleave', () => {
+        container.classList.remove('drag-over');
+    });
+
+    container.addEventListener('drop', (e) => {
+        e.preventDefault();
+        container.classList.remove('drag-over');
+
+        if (!dragTaskId) return;
+        if (dragTaskId.startsWith('TEMPLATE_DRAG_')) return;
+
+        addTemplateFromTask(dragTaskId);
+
+        if (dragPlaceholder) {
+            dragPlaceholder.remove();
+            dragPlaceholder = null;
+        }
+    });
+}
+
+
+// Патч для handleDropTask - обрабатываем шаблоны
+const originalHandleDropTask = handleDropTask;
+window.handleDropTask = function(taskId, newColumnId, beforeTaskId, evt) {
+    if (taskId && taskId.startsWith('TEMPLATE_DRAG_')) {
+        const templateId = taskId.replace('TEMPLATE_DRAG_', '');
+        createTaskFromTemplate(templateId, newColumnId, beforeTaskId);
+
+        // Анимация
+        const x = evt.clientX;
+        const y = evt.clientY;
+        playRandomCelebration(x, y);
+        return;
+    }
+
+    return originalHandleDropTask(taskId, newColumnId, beforeTaskId, evt);
+};
+
+function renderBoard() {
+    boardEl.innerHTML = '';
+
+    const sortedColumns = [...state.columns].sort((a, b) => a.order - b.order);
+    
+    sortedColumns.forEach(col => {
+        // Пропускаем "done" — он рендерится отдельно
+        if (col.id === 'done') return;
+        
+        // Для "stuck" создаём обёртку с done-box сверху
+        if (col.id === 'stuck') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'done-wrapper';
+            
+            // Блок "Сделано" сверху
+            const doneCol = state.columns.find(c => c.id === 'done');
+            const doneBox = createDoneBox(doneCol);
+            wrapper.appendChild(doneBox);
+            
+            // Колонка "Подвисло" снизу
+            const stuckCol = createColumn(col);
+            wrapper.appendChild(stuckCol);
+            
+            boardEl.appendChild(wrapper);
+        } 
+        // Для "inprogress" создаём обёртку со stats-box снизу
+        else if (col.id === 'inprogress') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'inprogress-wrapper';
+            
+            // Колонка "В работе" сверху
+            const inprogressCol = createColumn(col);
+            wrapper.appendChild(inprogressCol);
+            
+            // Блок статистики снизу
+            const statsBox = createStatsBox();
+            wrapper.appendChild(statsBox);
+            
+            boardEl.appendChild(wrapper);
+        } 
+        else {
+            const colEl = createColumn(col);
+            boardEl.appendChild(colEl);
+        }
+    });
+
+    updateColumnCounts();
+}
+
+function createDoneBox(col) {
+    ensureTasksOrderForColumn('done');
+    
+    const doneBox = document.createElement('div');
+    doneBox.className = 'done-box';
+    doneBox.dataset.id = 'done';
+
+    doneBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (!dragTaskId) return;
+        dragOverColumnId = 'done';
+
+        const body = doneBox.querySelector('.column-body');
+        if (!dragPlaceholder) {
+            dragPlaceholder = document.createElement('div');
+            dragPlaceholder.className = 'card-placeholder';
+        }
+        body.appendChild(dragPlaceholder);
+    });
+
+    doneBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!dragTaskId) return;
+
+        handleDropTask(dragTaskId, 'done', null, e);
+
+        if (dragPlaceholder) {
+            dragPlaceholder.remove();
+            dragPlaceholder = null;
+        }
+    });
+
+    const header = document.createElement('div');
+    header.className = 'column-header';
+    const title = document.createElement('div');
+    title.className = 'column-title';
+    title.textContent = col.title;
+    const count = document.createElement('div');
+    count.className = 'column-count';
+    header.appendChild(title);
+    header.appendChild(count);
+
+    const body = document.createElement('div');
+    body.className = 'column-body';
+
+    const order = state.tasksOrder['done'] || [];
+    const tasksInColumn = state.tasks.filter(t => t.columnId === 'done' && !t.archivedAt);
+    const ordered = tasksInColumn.sort((a, b) => {
+        const ia = order.indexOf(a.id);
+        const ib = order.indexOf(b.id);
+        if (ia === -1 && ib === -1) return a.createdAt - b.createdAt;
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+    });
+
+    // Показываем только последнюю задачу (она скоро уйдёт в архив)
+    if (ordered.length > 0) {
+        body.appendChild(renderCard(ordered[ordered.length - 1]));
+    }
+
+    doneBox.appendChild(header);
+const archiveBtn = document.createElement('button');
+archiveBtn.id = 'archiveToggle';
+archiveBtn.textContent = 'Архив';
+archiveBtn.style.margin = '10px auto';
+archiveBtn.style.display = 'block';
+archiveBtn.addEventListener('click', () => {
+    archiveOverlay.classList.add('open');
+    renderArchive();
+});
+doneBox.appendChild(archiveBtn);
+    doneBox.appendChild(body);
+
+    return doneBox;
+}
+
+function createColumn(col) {
+    const colEl = document.createElement('div');
+    colEl.className = 'column';
+    colEl.dataset.id = col.id;
+
+    colEl.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.closest('button') || target.closest('.card') || target.closest('[contenteditable]')) return;
+        createTaskInColumn(col.id);
+    });
+
+    colEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (!dragTaskId) return;
+        dragOverColumnId = col.id;
+
+        const body = colEl.querySelector('.column-body');
+        const afterElement = getDragAfterElement(body, e.clientY);
+
+        if (!dragPlaceholder) {
+            dragPlaceholder = document.createElement('div');
+            dragPlaceholder.className = 'card-placeholder';
+        }
+
+        if (afterElement == null) {
+            body.appendChild(dragPlaceholder);
+        } else {
+            body.insertBefore(dragPlaceholder, afterElement);
+        }
+    });
+
+    colEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!dragTaskId) return;
+
+        const body = colEl.querySelector('.column-body');
+        let beforeTaskId = null;
+
+        if (dragPlaceholder) {
+            const next = dragPlaceholder.nextElementSibling;
+            if (next && next.classList.contains('card')) {
+                beforeTaskId = next.dataset.id;
+            }
+        }
+
+        handleDropTask(dragTaskId, col.id, beforeTaskId, e);
+
+        if (dragPlaceholder) {
+            dragPlaceholder.remove();
+            dragPlaceholder = null;
+        }
+    });
+
+    const header = document.createElement('div');
+    header.className = 'column-header';
+    const title = document.createElement('div');
+    title.className = 'column-title';
+    title.textContent = col.title;
+    const count = document.createElement('div');
+    count.className = 'column-count';
+    header.appendChild(title);
+    header.appendChild(count);
+
+    const body = document.createElement('div');
+    body.className = 'column-body';
+
+    const order = state.tasksOrder[col.id] || [];
+    const tasksInColumn = state.tasks.filter(t => t.columnId === col.id && !t.archivedAt);
+    const ordered = tasksInColumn.sort((a, b) => {
+        const ia = order.indexOf(a.id);
+        const ib = order.indexOf(b.id);
+        if (ia === -1 && ib === -1) return a.createdAt - b.createdAt;
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+    });
+
+    ordered.forEach(t => body.appendChild(renderCard(t)));
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-task-btn';
+    addBtn.textContent = '+Задача';
+    addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        createTaskInColumn(col.id);
+    });
+
+    colEl.appendChild(header);
+    colEl.appendChild(body);
+    colEl.appendChild(addBtn);
+
+    return colEl;
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+
+    let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+
+    draggableElements.forEach(child => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            closest.offset = offset;
+            closest.element = child;
+        }
+    });
+
+    return closest.element;
+}
+
+function createTaskInColumn(columnId) {
+    const id = 't_' + Math.random().toString(36).slice(2, 8);
+    const task = {
+        id,
+        columnId,
+        title: '',
+        description: '',
+        priority: 'low',
+        dueDate: '',
+        tags: '',
+        subtasks: [
+            { id: `accepted${id}`, text: '💫✉️ Принято', done: false, isLocked: true },
+            { id: `mail${id}`, text: '✉️💫 Письмо о сделанном', done: false, isLocked: true }
+        ],
+        links: [],
+        collapsed: false,
+        createdAt: Date.now(),
+        archivedAt: null
+    };
+    state.tasks.push(task);
+    ensureTasksOrderForColumn(columnId);
+    state.tasksOrder[columnId].push(id);
+    saveState();
+
+    setTimeout(() => {
+        const newCard = document.querySelector(`.card[data-id="${id}"]`);
+        if (newCard) {
+            const titleEl = newCard.querySelector('.title');
+            if (titleEl) {
+                titleEl.focus();
+            }
+            newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, 80);
+}
+
+/* Новая функция создания блока статистики */
+function createStatsBox() {
+    checkStatsReset();
+    
+    const statsBox = document.createElement('div');
+    statsBox.className = 'stats-box';
+    
+    statsBox.addEventListener('click', () => {
+        const rect = statsBox.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        playTripleCelebration(x, y);
+    });
+    
+    const title = document.createElement('div');
+    title.className = 'stats-title';
+    title.textContent = 'Статистика за сегодня';
+    
+    const line1 = document.createElement('div');
+    line1.className = 'stats-line';
+    line1.textContent = `Выполнено задач: ${todayStats.tasksCompleted}`;
+    
+    const line2 = document.createElement('div');
+    line2.className = 'stats-line';
+    line2.textContent = `В том числе подзадач: ${todayStats.subtasksCompleted}`;
+    
+    statsBox.appendChild(title);
+    statsBox.appendChild(line1);
+    statsBox.appendChild(line2);
+    
+    return statsBox;
+}
+
+
+/* ============================================
+   БЛОК ДЖАВА-12: РЕНДЕР АРХИВА
+   ============================================ */
+function renderArchive() {
+    archiveListEl.innerHTML = '';
+
+    if (!state.archive.length) {
+        const empty = document.createElement('div');
+        empty.style.fontSize = '16px';
+        empty.style.color = '#6b7280';
+        empty.textContent = 'Архив пуст';
+        archiveListEl.appendChild(empty);
+    } else {
+        state.archive.forEach(task => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.cursor = 'default';
+
+            const title = document.createElement('div');
+            title.className = 'title';
+            setLinkifiedContent(title, task.title);
+
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'center';
+            row.style.marginTop = '6px';
+
+            const info = document.createElement('div');
+            info.className = 'archive-badge';
+            const d = new Date(task.archivedAt || Date.now());
+            const daysLeft = Math.max(0, APPCONFIG.archiveAutoDeleteDays - Math.floor((Date.now() - task.archivedAt) / (24*60*60*1000)));
+            info.textContent = `${d.toLocaleDateString('ru-RU')} (${daysLeft}д)`;
+
+            const btnGroup = document.createElement('div');
+            btnGroup.style.display = 'flex';
+            btnGroup.style.gap = '8px';
+            btnGroup.style.alignItems = 'center';
+
+            const restore = document.createElement('button');
+            restore.className = 'mini-btn';
+            restore.textContent = 'Восстановить';
+            restore.addEventListener('click', () => restoreTask(task.id));
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'archive-delete-btn';
+            deleteBtn.textContent = '×';
+            deleteBtn.title = 'Удалить';
+            deleteBtn.addEventListener('click', () => deleteArchivedTask(task.id));
+
+            btnGroup.appendChild(restore);
+            btnGroup.appendChild(deleteBtn);
+
+            row.appendChild(info);
+            row.appendChild(btnGroup);
+
+            card.appendChild(title);
+            card.appendChild(row);
+            archiveListEl.appendChild(card);
+        });
+    }
+
+    archiveCountEl.textContent = state.archive.length;
+}
+
+/* ============================================
+   БЛОК ДЖАВА-13: ОБРАБОТЧИКИ АРХИВА
+   ============================================ */
+document.getElementById('closeArchiveBtn').addEventListener('click', () => {
+    archiveOverlay.classList.remove('open');
+});
+
+document.getElementById('clearArchiveBtn').addEventListener('click', async () => {
+    const yes = await openConfirm('Очистить архив?', 'Все задачи будут удалены безвозвратно.');
+    if (yes) {
+        state.archive = [];
+        saveState();
+        showToast('Архив очищен');
+    }
+});
+
+document.getElementById('undoDeleteBtn').addEventListener('click', undoDeleteTask);
+
+/* ============================================
+   БЛОК ДЖАВА-14: ЭКСПОРТ/ИМПОРТ
+   ============================================ */
+function exportToFile(auto = false) {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state, null, 2));
+    const a = document.createElement('a');
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10);
+    const timeSuffix = auto ? '-auto' : '-manual';
+    a.href = dataStr;
+    a.download = `kanban-${dateStr}${timeSuffix}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    localStorage.setItem(LAST_EXPORT_KEY, dateStr);
+    if (!auto) showToast('Экспорт сохранён');
+    else showToast('Автоэкспорт');
+}
+
+document.getElementById('exportBtn').addEventListener('click', () => exportToFile(false));
+
+document.getElementById('importBtn').addEventListener('click', () => {
+    fileInput.value = '';
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (!imported.columns || !imported.tasks || !imported.archive) {
+                throw new Error('bad');
+            }
+            state = imported;
+            if (!state.tasksOrder) state.tasksOrder = {};
+            state.columns = APPCONFIG.columns.map(c => ({ ...c }));
+            saveState();
+            showToast('Импорт завершён');
+        } catch (err) {
+            alert('Ошибка импорта: неверный формат файла');
+        }
+    };
+    reader.readAsText(file);
+});
+
+/* ============================================
+   БЛОК ДЖАВА-15: АВТОЭКСПОРТ
+   ============================================ */
+function scheduleDailyAutoExport() {
+    function checkAndSchedule() {
+        const now = new Date();
+        const currentDateStr = now.toISOString().slice(0, 10);
+        const lastExport = localStorage.getItem(LAST_EXPORT_KEY);
+        const target = new Date(now);
+        target.setHours(23, 59, 0, 0);
+
+        if (now < target && lastExport !== currentDateStr) {
+            exportToFile(true);
+        }
+
+        const next = new Date(now);
+        if (now < target) {
+            next.setHours(23, 59, 0, 0);
+        } else {
+            next.setDate(now.getDate() + 1);
+            next.setHours(23, 59, 0, 0);
+        }
+        const delay = next - now;
+        setTimeout(checkAndSchedule, delay);
+    }
+    checkAndSchedule();
+}
+
+/* ============================================
+   БЛОК ДЖАВА-17: ЛИЧНАЯ КОЛОНКА
+   ============================================ */
+function renderPersonalColumn() {
+    const body = document.getElementById('personalBody');
+    const countEl = document.getElementById('personalCount');
+    if (!body) return;
+
+    body.innerHTML = '';
+    countEl.textContent = state.personalTasks.length;
+
+    state.personalTasks.forEach(task => {
+        const card = renderPersonalCard(task);
+        body.appendChild(card);
+    });
+}
+
+function renderPersonalCard(task) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = task.id;
+
+    if (task.collapsed) card.classList.add('collapsed');
+
+    const header = document.createElement('div');
+    header.className = 'card-header';
+
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = task.title || '';
+    title.contentEditable = true;
+    title.setAttribute('data-placeholder', 'Что сделать...');
+
+    title.addEventListener('blur', () => {
+        const newTitle = title.textContent.trim();
+        if (!newTitle && !task.description && (!task.subtasks || task.subtasks.length === 0)) {
+            deletePersonalTask(task.id);
+            return;
+        }
+        task.title = newTitle;
+        saveState();
+    });
+
+    title.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            title.blur();
+        }
+    });
+
+    header.appendChild(title);
+
+    const description = document.createElement('div');
+    description.className = 'description';
+    description.textContent = task.description || '';
+    description.contentEditable = true;
+    description.setAttribute('data-placeholder', 'Заметки...');
+    description.addEventListener('blur', () => {
+        task.description = description.textContent.trim();
+        saveState();
+    });
+
+    const subtasksWrap = document.createElement('div');
+    subtasksWrap.className = 'subtasks';
+    
+    if (!task.subtasks) task.subtasks = [];
+
+    const doneCount = task.subtasks.filter(s => s.done).length;
+    const progress = task.subtasks.length > 0 ? (doneCount / task.subtasks.length) * 100 : 0;
+
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'progress-bar-container';
+    const progressFill = document.createElement('div');
+    progressFill.className = 'progress-bar-fill';
+    progressFill.style.width = `${progress}%`;
+    progressContainer.appendChild(progressFill);
+    subtasksWrap.appendChild(progressContainer);
+
+    task.subtasks.forEach(sub => {
+        const row = document.createElement('div');
+        row.className = `subtask-row ${sub.done ? 'completed' : ''}`;
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = sub.done;
+        cb.addEventListener('change', (e) => {
+    sub.done = e.target.checked;
+    if (sub.done) {
+        checkPersonalStatsReset();
+        personalDailyStats.subtasksCompleted++;
+    }
+    row.classList.toggle('completed', sub.done);
+    const rect = e.target.getBoundingClientRect();
+    spawnSparkles(rect.left + 9, rect.top + 9);
+    
+saveState();
+renderPersonalColumn();
+});
+
+        const span = document.createElement('span');
+        span.className = 'subtask-text';
+        span.textContent = sub.text;
+        span.contentEditable = true;
+        span.setAttribute('data-placeholder', 'Подзадача...');
+
+        span.addEventListener('blur', () => {
+            const newText = span.textContent.trim();
+            if (!newText) {
+                const idx = task.subtasks.indexOf(sub);
+                if (idx !== -1) task.subtasks.splice(idx, 1);
+            } else {
+                sub.text = newText;
+            }
+            saveState();
+            renderPersonalColumn();
+        });
+
+        span.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sub.text = span.textContent.trim();
+                const newSub = { id: 'psub_' + Math.random().toString(36).slice(2, 8), text: '', done: false };
+                const idx = task.subtasks.indexOf(sub);
+                task.subtasks.splice(idx + 1, 0, newSub);
+                saveState();
+                renderPersonalColumn();
+                setTimeout(() => {
+                    const rows = document.querySelectorAll('.personal-column .subtask-row');
+                    const targetRow = rows[idx + 1];
+                    if (targetRow) {
+                        const targetSpan = targetRow.querySelector('.subtask-text');
+                        if (targetSpan) targetSpan.focus();
+                    }
+                }, 50);
+            }
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'mini-btn delete-task-btn';
+        deleteBtn.textContent = '×';
+        deleteBtn.addEventListener('click', () => {
+            const idx = task.subtasks.indexOf(sub);
+            if (idx !== -1) task.subtasks.splice(idx, 1);
+            saveState();
+            renderPersonalColumn();
+        });
+
+        row.appendChild(cb);
+        row.appendChild(span);
+        row.appendChild(deleteBtn);
+        subtasksWrap.appendChild(row);
+    });
+
+    const footer = document.createElement('div');
+    footer.className = 'subtasks-footer';
+    const progressText = document.createElement('div');
+    progressText.className = 'progress';
+    progressText.textContent = task.subtasks.length ? `${doneCount}/${task.subtasks.length}` : '0/0';
+    
+    const addSubBtn = document.createElement('button');
+    addSubBtn.className = 'add-subtask-btn';
+    addSubBtn.textContent = '+';
+    addSubBtn.addEventListener('click', () => {
+        const newSub = { id: 'psub_' + Math.random().toString(36).slice(2, 8), text: '', done: false };
+        task.subtasks.push(newSub);
+        saveState();
+        renderPersonalColumn();
+    });
+
+    footer.appendChild(progressText);
+    footer.appendChild(addSubBtn);
+    subtasksWrap.appendChild(footer);
+
+    const deleteCardBtn = document.createElement('button');
+    deleteCardBtn.className = 'card-delete-btn';
+    deleteCardBtn.innerHTML = '×';
+    deleteCardBtn.addEventListener('click', () => deletePersonalTask(task.id));
+
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'card-collapse-btn';
+    collapseBtn.innerHTML = task.collapsed ? '▶' : '▼';
+    collapseBtn.addEventListener('click', () => {
+        task.collapsed = !task.collapsed;
+        card.classList.toggle('collapsed', task.collapsed);
+        collapseBtn.innerHTML = task.collapsed ? '▶' : '▼';
+        saveState();
+    });
+
+    card.appendChild(deleteCardBtn);
+    card.appendChild(collapseBtn);
+    card.appendChild(header);
+    card.appendChild(description);
+    card.appendChild(subtasksWrap);
+
+    return card;
+}
+
+function createPersonalTask() {
+    const id = 'pt_' + Math.random().toString(36).slice(2, 8);
+    const task = {
+        id,
+        title: '',
+        description: '',
+        subtasks: [],
+        collapsed: false,
+        createdAt: Date.now()
+    };
+    state.personalTasks.unshift(task);
+    
+    // Считаем как сделанное дело
+    checkPersonalStatsReset();
+    personalDailyStats.tasksCompleted++;
+    
+    saveState();
+    renderPersonalColumn();
+
+    setTimeout(() => {
+        const card = document.querySelector(`.personal-column .card[data-id="${id}"]`);
+        if (card) {
+            const titleEl = card.querySelector('.title');
+            if (titleEl) titleEl.focus();
+        }
+    }, 50);
+}
+
+function deletePersonalTask(taskId, isCompleted = false) {
+    const idx = state.personalTasks.findIndex(t => t.id === taskId);
+    if (idx !== -1) {
+        if (isCompleted) {
+            // Считаем статистику перед удалением
+            const task = state.personalTasks[idx];
+            checkPersonalStatsReset();
+            personalDailyStats.tasksCompleted++;
+            if (task.subtasks) {
+                personalDailyStats.subtasksCompleted += task.subtasks.filter(s => s.done).length;
+            }
+        }
+        state.personalTasks.splice(idx, 1);
+        saveState();
+        renderPersonalColumn();
+        if (!isCompleted) showToast('Удалено');
+    }
+}
+
+// Ежедневный отчёт в 23:00
+function showPersonalReport(force = false) {
+    // Проверяем, не был ли уже показан сегодня
+    const today = new Date().toDateString();
+    if (!force && reportShownToday) return;
+    
+    // Отмечаем что показали
+    reportShownToday = true;
+    localStorage.setItem('personal_report_shown', today);
+    
+    const modal = document.createElement('div');
+    modal.className = 'personal-report-modal';
+    
+    const completedTasks = personalDailyStats.tasksCompleted;
+    const completedSubtasks = personalDailyStats.subtasksCompleted;
+    
+    // Тексты похвалы в зависимости от результатов
+    let praiseText = '';
+    let emoji = '';
+    
+if (completedTasks === 0) {
+    praiseText = 'Сегодня был день отдыха. Тоже важно! Но завтра давай поработаем 💪';
+    emoji = '🌙';
+} else if (completedTasks <= 2) {
+    praiseText = `Неплохое начало! ${completedTasks} дел${completedTasks === 1 ? 'о' : 'а'} — это уже что-то. Но ты можешь больше! 🌱`;
+    emoji = '🌿';
+} else if (completedTasks <= 5) {
+    praiseText = `Молодец! ${completedTasks} дел — хороший результат! Завтра попробуй побить этот рекорд 🎯`;
+    emoji = '✨';
+} else if (completedTasks <= 10) {
+    praiseText = `Ты просто космос! ${completedTasks} дел за день — это мощно! Продолжай в том же духе 🚀`;
+    emoji = '🔥';
+} else {
+    praiseText = `НЕВЕРОЯТНО! ${completedTasks} дел — ты машина продуктивности! Только не забывай отдыхать 💎`;
+    emoji = '🏆';
+}
+    
+    modal.innerHTML = `
+        <button class="report-close-x">×</button>
+        <div class="report-emoji">${emoji}</div>
+        <div class="report-title">Отчёт за день</div>
+        <div class="report-stats">
+            <div class="stat-line">
+                <span class="stat-label">Выполнено дел:</span>
+                <span class="stat-value">${completedTasks}</span>
+            </div>
+            <div class="stat-line">
+                <span class="stat-label">Закрыто подзадач:</span>
+                <span class="stat-value">${completedSubtasks}</span>
+            </div>
+        </div>
+        <div class="report-praise">${praiseText}</div>
+        <div class="report-remaining">
+            Незавершённых дел: ${state.personalTasks.length}
+        </div>
+        <div class="report-buttons">
+            <button class="report-clear-btn">Очистить всё и начать завтра с чистого листа</button>
+            <button class="report-keep-btn">Оставить незавершённые на завтра</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Анимация появления
+    setTimeout(() => {
+        modal.classList.add('show');
+        // Празднование в зависимости от результата
+        const rect = modal.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        
+        if (completedTasks > 10) {
+            playTripleCelebration(cx, cy);
+        } else if (completedTasks > 5) {
+            spawnFireworks(cx, cy);
+            spawnStars(cx, cy);
+        } else if (completedTasks > 0) {
+            spawnSparkles(cx, cy);
+            spawnBubbles(cx, cy);
+        }
+    }, 100);
+    
+    // Случайные эффекты закрытия
+    const closeEffects = [
+        () => {
+            modal.style.transition = 'all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+            modal.style.transform = 'translate(-50%, -50%) scale(0) rotate(720deg)';
+            modal.style.opacity = '0';
+        },
+        () => {
+            modal.style.transition = 'all 0.5s ease-out';
+            modal.style.transform = 'translate(-50%, -200%) scale(1.5)';
+            modal.style.opacity = '0';
+        },
+        () => {
+            modal.style.transition = 'all 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045)';
+            modal.style.transform = 'translate(200%, -50%) rotate(45deg)';
+            modal.style.opacity = '0';
+        },
+        () => {
+            modal.style.transition = 'all 0.5s ease-in';
+            modal.style.transform = 'translate(-50%, 200%) scale(0.1)';
+            modal.style.opacity = '0';
+            modal.style.filter = 'blur(10px)';
+        },
+        () => {
+            modal.style.transition = 'all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            modal.style.transform = 'translate(-50%, -50%) scale(2) rotate(-180deg)';
+            modal.style.opacity = '0';
+            modal.style.filter = 'hue-rotate(180deg)';
+        },
+        () => {
+            modal.style.transition = 'all 0.6s ease-out';
+            modal.style.clipPath = 'circle(0% at 50% 50%)';
+            modal.style.transform = 'translate(-50%, -50%)';
+        },
+        () => {
+            modal.style.transition = 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            modal.style.transform = 'translate(-50%, -50%) perspective(1000px) rotateX(90deg)';
+            modal.style.opacity = '0';
+        },
+        () => {
+            modal.style.transition = 'all 0.6s ease-in-out';
+            modal.style.transform = 'translate(-50%, -50%) skew(45deg, 45deg) scale(0)';
+            modal.style.opacity = '0';
+        }
+    ];
+    
+    const closeModal = () => {
+        const effect = closeEffects[Math.floor(Math.random() * closeEffects.length)];
+        effect();
+        setTimeout(() => {
+            if (modal.parentNode) modal.remove();
+        }, 800);
+    };
+    
+    const closeX = modal.querySelector('.report-close-x');
+    const clearBtn = modal.querySelector('.report-clear-btn');
+    const keepBtn = modal.querySelector('.report-keep-btn');
+    
+    closeX.onclick = closeModal;
+    
+    clearBtn.onclick = () => {
+        // Полная очистка
+        state.personalTasks = [];
+        personalDailyStats = {
+            date: new Date().toDateString(),
+            tasksCompleted: 0,
+            subtasksCompleted: 0
+        };
+        saveState();
+        renderPersonalColumn();
+        closeModal();
+        setTimeout(() => showToast('🌅 Новый день — чистый лист!'), 300);
+    };
+    
+    keepBtn.onclick = () => {
+        // Оставляем задачи, обнуляем только статистику
+        personalDailyStats = {
+            date: new Date().toDateString(),
+            tasksCompleted: 0,
+            subtasksCompleted: 0
+        };
+        closeModal();
+        setTimeout(() => showToast('📝 Незавершённые дела перенесены'), 300);
+    };
+}
+
+// Планировщик отчёта на 23:00
+function schedulePersonalReport() {
+    function checkAndSchedule() {
+        const now = new Date();
+        const today = now.toDateString();
+        
+        // Сброс флага показа в новый день
+        if (localStorage.getItem('personal_report_shown') !== today && now.getHours() < 23) {
+            reportShownToday = false;
+        }
+        
+        // Показываем только если не показывали сегодня
+        if (now.getHours() === 23 && now.getMinutes() === 0 && !reportShownToday) {
+            showPersonalReport();
+        }
+        
+        // Проверяем каждую минуту
+        setTimeout(checkAndSchedule, 60000);
+    }
+    checkAndSchedule();
+}
+
+// Обработчики
+document.getElementById('personalToggle').addEventListener('click', () => {
+    document.getElementById('personalOverlay').classList.add('open');
+    renderPersonalColumn();
+		setTimeout(() => {
+			addManualReportButton();
+		}, 100);
+});
+
+document.getElementById('closePersonalBtn').addEventListener('click', () => {
+    const overlay = document.getElementById('personalOverlay');
+    overlay.classList.add('closing');
+    setTimeout(() => {
+        overlay.classList.remove('open', 'closing');
+    }, 400);
+});
+
+document.getElementById('personalOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'personalOverlay') {
+        const overlay = document.getElementById('personalOverlay');
+        overlay.classList.add('closing');
+        setTimeout(() => {
+            overlay.classList.remove('open', 'closing');
+        }, 400);
+    }
+});
+
+document.getElementById('addPersonalTaskBtn').addEventListener('click', () => {
+    createPersonalTask();
+});
+
+// Клик по пустому месту колонки для создания задачи
+document.getElementById('personalColumn').addEventListener('click', (e) => {
+    const target = e.target;
+    
+    // Игнорируем клик по кнопке отчёта
+    if (target.classList.contains('manual-report-btn') || 
+        target.closest('.manual-report-btn')) {
+        return;
+    }
+    
+    if (target.id === 'personalColumn' || 
+        target.classList.contains('column-body') ||
+        target.classList.contains('column-header') ||
+        target.classList.contains('column-title') ||
+        target.classList.contains('column-count')) {
+        
+        if (!target.closest('.card') && 
+            !target.closest('button') && 
+            !target.closest('[contenteditable]')) {
+            createPersonalTask();
+        }
+    }
+});
+
+renderPersonalColumn();
+
+/* ============================================
+   БЛОК ДЖАВА-16: ИНИЦИАЛИЗАЦИЯ
+   ============================================ */
+loadTemplates();
+    renderBoard();
+    renderTemplatesBar();
+    initTemplatesDropZone();
+
+scheduleDailyAutoExport();
+
+schedulePersonalReport();
+
+
+    </script>
+</body>
+</html>
