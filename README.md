@@ -52,12 +52,12 @@ Access the dedicated "Personal" list to manage private to-dos separately from th
 
 ![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-41-37.png)
 
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-09.png)
+
+![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-42-26ps.png)
+
 ## 🤝 Contributing
 Since the entire logic is in one file, customization is straightforward. Feel free to fork and submit Pull Requests!
 
 ## 📄 License
 Distributed under the MIT License.
-
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-32-09.png)
-
-![](https://github.com/Yu1e/Misc/blob/main/2026-01-19_11-42-26ps.png)
